@@ -158,14 +158,13 @@ export default function CartPage() {
               gap: 14,
             }}
           >
-            {items.map((item) => {
-              const image =
-                item.product.images.find(
-                  (img) => img.isThumbnail,
-                )?.url ||
-                item.product.images[0]?.url ||
-                "";
-
+{items.map((item) => {
+  const image =
+    item.product.images.find(
+      (img: any) => img.isThumbnail,
+    )?.url ||
+    item.product.images[0]?.url ||
+    "";
               const pricing = item.product.pricing as {
                 withoutBlouse: number;
                 discountWithoutBlouse?: number;

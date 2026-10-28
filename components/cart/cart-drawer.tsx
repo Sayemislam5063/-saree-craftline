@@ -91,7 +91,7 @@ const price =
 
                 const thumbnail =
                   item.product.images.find(
-                    (image) => image.isThumbnail,
+                    (image: any) => image.isThumbnail,
                   )?.url ||
                   item.product.images[0]?.url;
 

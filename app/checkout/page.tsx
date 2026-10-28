@@ -551,7 +551,7 @@ export default function CheckoutPage() {
             <div className="items">
               {items.map((item) => {
                 const price = getItemPrice(item);
-                const thumbnail = item.product.images.find((image) => image.isThumbnail)?.url ?? item.product.images[0]?.url;
+                const thumbnail = item.product.images.find((image: any) => image.isThumbnail)?.url ?? item.product.images[0]?.url;
                 const itemIsFree = (item.product as any).isFreeDelivery === true;
 
                 return (
