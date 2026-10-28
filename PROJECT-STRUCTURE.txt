@@ -1,0 +1,9 @@
+Saree Craftline E-commerce
+
+Frontend + Admin: Next.js
+Deployment: Vercel
+Database: Supabase
+Product Images: External image hosting such as Cloudinary
+
+IMPORTANT: Empty files were created only for the project structure.
+We will fill the files step-by-step.
