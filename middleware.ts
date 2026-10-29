@@ -1,23 +1,52 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
-export function middleware(request: NextRequest) {
-  const path = request.nextUrl.pathname;
+export async function middleware(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({
+    request,
+  })
 
-  const isAdminPage = path.startsWith('/admin');
-  const isLoginPage = path === '/admin/login';
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
 
-  // চেক করা হচ্ছে ইউজার লগইন কুকি আছে কি না
-  const hasAuthCookie = request.cookies.getAll().some(cookie => cookie.name.includes('auth-token'));
+  // ইউজার লগইন আছে কি না চেক করা
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  // যদি অ্যাডমিন পেজে যায়, লগইন না থাকে এবং লগইন পেজ না হয়, তবে তাকে লগইনে পাঠিয়ে দেবে
-  if (isAdminPage && !isLoginPage && !hasAuthCookie) {
-    return NextResponse.redirect(new URL('/admin/login', request.url));
+  // যদি ইউজার না থাকে এবং সে অ্যাডমিন পেজে যেতে চায়, তাকে লগইনে পাঠিয়ে দেবে
+  if (
+    !user &&
+    !request.nextUrl.pathname.startsWith('/admin/login')
+  ) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/admin/login'
+    return NextResponse.redirect(url)
   }
 
-  return NextResponse.next();
+  return supabaseResponse
 }
 
 export const config = {
-  matcher: '/admin/:path*',
-};
+  matcher: [
+    '/admin/:path*',
+  ],
+}
