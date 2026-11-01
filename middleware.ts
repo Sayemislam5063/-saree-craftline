@@ -6,9 +6,15 @@ export async function middleware(request: NextRequest) {
     request,
   })
 
+  // ✨ Safety Check: Environment Variables না থাকলে ক্র্যাশ না করার জন্য
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+    console.error("Missing Supabase Env Variables in Middleware");
+    return supabaseResponse;
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
       cookies: {
         getAll() {
@@ -27,7 +33,6 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // ✨ এই লাইনটি শুধু সেশন রিফ্রেশ করে, কোনো রিডাইরেক্ট করে না
   await supabase.auth.getUser()
 
   return supabaseResponse
@@ -35,13 +40,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this to fit your needs.
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

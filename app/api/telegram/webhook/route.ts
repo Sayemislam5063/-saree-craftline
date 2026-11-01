@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabase/server";
 import { checkSteadfastFraud, createSteadfastBooking } from "../../../../lib/steadfast/client";
 
-const BOT1_TOKEN = process.env.TELEGRAM_BOT1_TOKEN;
-const BOT2_TOKEN = process.env.TELEGRAM_BOT2_TOKEN;
-const NOTIFY_CHAT_ID = process.env.TELEGRAM_NOTIFY_CHAT_ID;
-const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;
+// ✨ .trim() যোগ করা হয়েছে যাতে বাড়তি স্পেস থাকলেও সমস্যা না হয়
+const BOT1_TOKEN = process.env.TELEGRAM_BOT1_TOKEN?.trim();
+const BOT2_TOKEN = process.env.TELEGRAM_BOT2_TOKEN?.trim();
+const NOTIFY_CHAT_ID = process.env.TELEGRAM_NOTIFY_CHAT_ID?.trim();
+const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID?.trim();
 
 async function sendTelegramMessage(botToken: string, chatId: number | string, text: string) {
   await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
     const chatId = message.chat.id;
     const text = message.text.trim();
 
-    // ✨ সিকিউরিটি চেক
+    // ✨ সিকিউরিটি চেক (এখন আর স্পেসের কারণে আটকে যাবে না)
     if (ADMIN_CHAT_ID && chatId.toString() !== ADMIN_CHAT_ID) {
       return NextResponse.json({ ok: true });
     }
