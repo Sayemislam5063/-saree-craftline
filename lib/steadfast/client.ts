@@ -21,6 +21,7 @@ export type FraudCheckResult = {
   fraudCategories: string[];
   isFraud: boolean;
   requiresReview: boolean;
+  rawData?: any; // ✨ ডিবাগ করার জন্য
 };
 
 export type SteadfastBookingInput = {
@@ -58,27 +59,22 @@ function getCredentials() {
 
 function normalizePhone(phone: string): string {
   let normalized = phone.replace(/\D/g, "");
-
   if (normalized.startsWith("880") && normalized.length === 13) {
     normalized = `0${normalized.slice(3)}`;
   } else if (normalized.length === 10 && normalized.startsWith("1")) {
     normalized = `0${normalized}`;
   }
-
   if (!/^01[3-9]\d{8}$/.test(normalized)) {
     throw new Error("সঠিক বাংলাদেশি মোবাইল নম্বর পাওয়া যায়নি।");
   }
-
   return normalized;
 }
 
 async function readJson(response: Response): Promise<ApiObject> {
   const result: unknown = await response.json();
-
   if (!result || typeof result !== "object" || Array.isArray(result)) {
     throw new Error("Steadfast API returned an unexpected response.");
   }
-
   return result as ApiObject;
 }
 
@@ -118,39 +114,29 @@ export async function checkSteadfastFraud(
     return null;
   };
 
-  // ✨ Steadfast API-এর সম্ভাব্য সব ফিল্ডের নাম চেক করা হচ্ছে
-  const delivered = 
-    asNumber(data.total_delivered) ?? 
-    asNumber(data.delivered_count) ?? 
-    asNumber(data.delivered) ?? 
-    asNumber(data.delivered_parcels) ?? 
-    asNumber(data.success_parcels) ?? 
-    asNumber(data.success_count) ?? 0;
+  // ✨ অ্যারে বা অবজেক্ট—সব ফরম্যাট থেকে সংখ্যা বের করার শক্তিশালী ফাংশন
+  const safeCount = (...values: unknown[]): number => {
+    for (const value of values) {
+      if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value;
+      if (Array.isArray(value)) return value.length;
+      if (typeof value === "string") {
+        const parsed = Number(value.replace(/[%,]/g, "").trim());
+        if (value.trim() !== "" && Number.isFinite(parsed) && parsed >= 0) return parsed;
+      }
+      if (value && typeof value === "object" && "length" in value && typeof value.length === "number" && value.length >= 0) {
+        return value.length;
+      }
+    }
+    return 0;
+  };
 
-  const cancelled = 
-    asNumber(data.total_cancelled) ?? 
-    asNumber(data.cancelled_count) ?? 
-    asNumber(data.cancelled) ?? 
-    asNumber(data.cancelled_parcels) ?? 
-    asNumber(data.return_parcels) ?? 
-    asNumber(data.cancel_count) ?? 0;
+  // ✨ সম্ভাব্য সব ফিল্ডের নাম চেক করা হচ্ছে
+  const delivered = safeCount(data.total_delivered, data.delivered_count, data.delivered, data.delivered_parcels, data.success_parcels, data.success_count);
+  const cancelled = safeCount(data.total_cancelled, data.cancelled_count, data.cancelled, data.cancelled_parcels, data.return_parcels, data.cancel_count);
+  const parcels = safeCount(data.total_parcels, data.total_parcel, data.parcel_volume, data.total_packets, data.parcels, data.total_parcel_count);
+  const finalParcels = parcels > 0 ? parcels : (delivered + cancelled);
 
-  const parcels = 
-    asNumber(data.total_parcels) ?? 
-    asNumber(data.total_parcel) ?? 
-    asNumber(data.parcel_volume) ?? 
-    asNumber(data.total_packets) ?? 
-    asNumber(data.parcels) ?? 
-    asNumber(data.total_parcel_count) ?? 
-    (delivered + cancelled);
-
-  const totalFraudReports = Math.max(
-    0,
-    asNumber(data.total_reports) ?? 
-    asNumber(data.total_fraud_reports) ?? 
-    asNumber(data.fraud_reports) ?? 0
-  );
-
+  const totalFraudReports = Math.max(0, safeCount(data.total_reports, data.total_fraud_reports, data.fraud_reports));
   const score = asNumber(data.score) ?? asNumber(data.fraud_score);
   const level = typeof data.level === "string" && data.level.trim() ? data.level.trim() : null;
   const scoringDisabled = data.scoring_disabled === true;
@@ -168,7 +154,7 @@ export async function checkSteadfastFraud(
 
   return {
     phone: normalizedPhone,
-    totalParcels: parcels,
+    totalParcels: finalParcels,
     totalDelivered: delivered,
     totalCancelled: cancelled,
     totalFraudReports,
@@ -182,6 +168,7 @@ export async function checkSteadfastFraud(
     fraudCategories,
     isFraud,
     requiresReview,
+    rawData: data, // ✨ আসল ডেটা পাঠানো হলো
   };
 }
 

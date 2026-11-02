@@ -30,8 +30,7 @@ export async function POST(req: Request) {
     if (ADMIN_CHAT_ID && chatId.toString() !== ADMIN_CHAT_ID) {
       return NextResponse.json({ ok: true });
     }
-
-        // ১. ফ্রড চেক
+    // ১. ফ্রড চেক
     if (text.startsWith("/fc ")) {
       const phone = text.split(" ")[1];
       if (!phone) return sendTelegramMessage(BOT1_TOKEN!, chatId, "⚠️ ফোন নাম্বার দিন।");
@@ -41,13 +40,15 @@ export async function POST(req: Request) {
       try {
         const fraudData = await checkSteadfastFraud(phone);
         
-        // ✨ আপনার চাহিদা অনুযায়ী হুবহু Steadfast অ্যাপের মতো ফরম্যাট
         let msg = `<b>📊 Steadfast Fraud Report</b>\n\n`;
         msg += `✅ <b>Delivered:</b> ${fraudData.deliveryRatio ?? 0}%\n`;
         msg += `❌ <b>Cancelled:</b> ${fraudData.cancellationRatio ?? 0}%\n`;
         msg += `📈 <b>Success Rate:</b> ${fraudData.deliveryRatio ?? 0}%\n\n`;
         msg += `📦 <b>Parcel Volume:</b> ${fraudData.totalParcels ?? 0}\n`;
-        msg += `🛡️ <b>Fraud Reports:</b> ${fraudData.totalFraudReports ?? 0}`;
+        msg += `🛡️ <b>Fraud Reports:</b> ${fraudData.totalFraudReports ?? 0}\n\n`;
+        
+        // ✨ ডিবাগ লাইন (আসল ডেটা দেখার জন্য)
+        msg += `<b>Debug Data:</b>\n<code>${JSON.stringify(fraudData.rawData).slice(0, 200)}</code>`;
 
         await sendTelegramMessage(BOT1_TOKEN!, chatId, msg);
       } catch (err: any) {
