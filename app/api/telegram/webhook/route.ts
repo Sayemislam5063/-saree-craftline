@@ -163,8 +163,16 @@ export async function POST(req: Request) {
         await sendTelegramMessage(BOT1_TOKEN!, chatId, successMsg);
 // 🔔 Bot 2 (Notification) - নতুন ক্লিন ফরম্যাট
 if (bookingSuccess && NOTIFY_CHAT_ID) {
+  // ✨ তারিখ ও সময় বের করার কোড
+  const orderDateStr = new Date().toLocaleString("en-GB", { 
+    timeZone: "Asia/Dhaka", 
+    day: "2-digit", month: "short", year: "numeric", 
+    hour: "2-digit", minute: "2-digit", hour12: true 
+  });
+
   let notifyMsg = `🛒 <b>NEW MANUAL ORDER</b> 🛒\n`;
   notifyMsg += `━━━━━━━━━━━━━━━━━━━\n`;
+  notifyMsg += `📅 <b>তারিখ:</b> <b>${orderDateStr}</b>\n`; // ✨ এখানে তারিখ যুক্ত হলো
   notifyMsg += `🧾 <b>Order ID:</b> <code>${orderNumber}</code>\n`;
   notifyMsg += `📦 <b>Status:</b> <b>${bookingSuccess ? "BOOKED ✅" : "PENDING ⏳"}</b>\n\n`;
 

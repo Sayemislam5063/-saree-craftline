@@ -137,26 +137,38 @@ export async function POST(request: Request) {
       await supabaseAdmin.from("orders").update({ steadfast_booking_status: "booking_error", steadfast_booking_error: bookingError instanceof Error ? bookingError.message : "Unknown error" }).eq("order_number", orderNumber);
     }
 
-    // ✨ নোটিফিকেশন মেসেজ (নতুন ক্লিন ফরম্যাট)
-    if (bookingSuccess) {
-      let msg = `🛒 <b>NEW WEBSITE ORDER</b> 🛒\n`;
-      msg += `━━━━━━━━━━━━━━━━━━━\n`;
-      msg += `🧾 <b>Order ID:</b> <code>${orderNumber}</code>\n`;
-      msg += `📦 <b>Status:</b> <b>BOOKED</b>\n\n`;
-      
-      msg += `👤 <b>Customer:</b> ${body.customer_name}\n`;
-      msg += `📞 <b>Phone:</b> ${body.phone}\n`;
-      msg += `📍 <b>Address:</b> ${body.address}, ${body.upazila}, ${body.district}\n\n`;
-      
-      msg += `💰 <b>Total Bill:</b> ৳${total}\n`;
-      msg += `━━━━━━━━━━━━━━━━━━━\n`;
-      
-      msg += `🆔 <b>Consignment ID:</b> <b>${bookingConsignmentId}</b>\n`;
-      msg += `🚚 <b>Tracking:</b> <a href="https://steadfast.com.bd/t/${bookingTrackingCode}"><b>${bookingTrackingCode}</b></a>`;
-      
-      const productImages = orderItems.map(item => item.imageUrl).filter(url => url !== "");
-      waitUntil(sendTelegramNotify(msg, productImages));
-    }
+// ✨ নোটিফিকেশন মেসেজ (নতুন ক্লিন ফরম্যাট)
+if (bookingSuccess) {
+  // ✨ তারিখ ও সময় বের করার কোড
+  const orderDateStr = new Date().toLocaleString("en-GB", { 
+    timeZone: "Asia/Dhaka", 
+    day: "2-digit", month: "short", year: "numeric", 
+    hour: "2-digit", minute: "2-digit", hour12: true 
+  });
+
+  let msg = `🛒 <b>NEW WEBSITE ORDER</b> 🛒\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━\n`;
+  msg += `📅 <b>তারিখ:</b> <b>${orderDateStr}</b>\n`; // ✨ এখানে তারিখ যুক্ত হলো
+  msg += `🧾 <b>Order ID:</b> <code>${orderNumber}</code>\n`;
+  msg += `📦 <b>Status:</b> <b>BOOKED</b>\n\n`;
+  
+  msg += `👤 <b>Customer:</b> ${body.customer_name}\n`;
+  msg += `📞 <b>Phone:</b> ${body.phone}\n`;
+  msg += `📍 <b>Address:</b> ${body.address}, ${body.upazila}, ${body.district}\n\n`;
+  
+  msg += `💰 <b>Total Bill:</b> ৳${total}\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━\n`;
+  
+  // ✨ কনসাইনমেন্ট আইডিও এখানে ক্লিকেবল (copy) করে দিলাম, যাতে দুই জায়গায় একই রকম দেখায়
+  msg += `🆔 <b>CONSIGNMENT ID</b> 🆔\n`;
+  msg += `<pre><b>${bookingConsignmentId}</b></pre>\n`;
+  msg += `👆 <i>কপি করতে ট্যাপ করুন</i>\n\n`;
+
+  msg += `🚚 <b>Tracking:</b> <a href="https://steadfast.com.bd/t/${bookingTrackingCode}"><b>${bookingTrackingCode}</b></a>`;
+  
+  const productImages = orderItems.map(item => item.imageUrl).filter(url => url !== "");
+  waitUntil(sendTelegramNotify(msg, productImages));
+}
 
     return NextResponse.json({ success: true, order_number: orderNumber, order_date: orderDate, total, booking_status: bookingSuccess ? "booked" : "error" });
 
