@@ -154,6 +154,8 @@ function readCount(
   );
 }
 
+// ... (ফাইলের উপরের অংশ আগের মতোই থাকবে)
+
 export async function checkSteadfastFraud(
   phone: string,
 ): Promise<FraudCheckResult> {
@@ -184,7 +186,6 @@ export async function checkSteadfastFraud(
       ? (result.data as ApiObject)
       : result;
 
-  // % চিহ্ন বা কমা থাকলেও যাতে নাম্বার রিড করতে পারে
   const asNumber = (value: unknown): number | null => {
     if (typeof value === "number" && Number.isFinite(value)) {
       return value;
@@ -199,11 +200,9 @@ export async function checkSteadfastFraud(
     return null;
   };
 
-  // Steadfast API থেকে সম্ভাব্য সব নাম চেক করা হচ্ছে
-  const delivered = asNumber(data.total_delivered) ?? asNumber(data.delivered_count) ?? asNumber(data.delivered) ?? 0;
-  const cancelled = asNumber(data.total_cancelled) ?? asNumber(data.cancelled_count) ?? asNumber(data.cancelled) ?? 0;
-  
-  // ✨ যদি সরাসরি total_parcels না পাওয়া যায়, তবে Delivered + Cancelled করে বের করবে
+  // ✨ সম্ভাব্য সব ফিল্ডের নাম চেক করা হচ্ছে
+  const delivered = asNumber(data.total_delivered) ?? asNumber(data.delivered_count) ?? asNumber(data.delivered) ?? asNumber(data.delivered_parcels) ?? 0;
+  const cancelled = asNumber(data.total_cancelled) ?? asNumber(data.cancelled_count) ?? asNumber(data.cancelled) ?? asNumber(data.cancelled_parcels) ?? 0;
   const parcels = asNumber(data.total_parcels) ?? asNumber(data.total_parcel) ?? asNumber(data.parcel_volume) ?? (delivered + cancelled);
 
   const totalFraudReports = Math.max(
@@ -250,9 +249,9 @@ export async function checkSteadfastFraud(
 
   return {
     phone: normalizedPhone,
-    totalParcels: parcels, // ✨ এখানে আপডেট করা হয়েছে
-    totalDelivered: delivered, // ✨ এখানে আপডেট করা হয়েছে
-    totalCancelled: cancelled, // ✨ এখানে আপডেট করা হয়েছে
+    totalParcels: parcels,
+    totalDelivered: delivered,
+    totalCancelled: cancelled,
     totalFraudReports,
     deliveryRatio,
     cancellationRatio,
@@ -266,6 +265,7 @@ export async function checkSteadfastFraud(
     requiresReview,
   };
 }
+
 /* ==========================================
    CREATE COURIER BOOKING
 ========================================== */
