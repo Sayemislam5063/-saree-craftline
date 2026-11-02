@@ -118,6 +118,7 @@ export async function POST(request: Request) {
 
     let bookingSuccess = false;
     let bookingTrackingCode = "Pending";
+    let bookingConsignmentId = "Pending"; // ✨ নতুন ভ্যারিয়েবল কনসাইনমেন্ট আইডির জন্য
     
     try {
       const bookingResult = await createSteadfastBooking({
@@ -126,6 +127,8 @@ export async function POST(request: Request) {
       });
 
       bookingTrackingCode = bookingResult.trackingCode;
+      bookingConsignmentId = bookingResult.consignmentId; // ✨ কনসাইনমেন্ট আইডি সেভ করা হলো
+
       await supabaseAdmin.from("orders").update({
         steadfast_consignment_id: bookingResult.consignmentId, steadfast_tracking_code: bookingResult.trackingCode, steadfast_booking_status: "booked", steadfast_booking_date: bookingResult.bookedAt || new Date().toISOString(), steadfast_delivery_status: bookingResult.status,
       }).eq("order_number", orderNumber);
@@ -134,9 +137,23 @@ export async function POST(request: Request) {
       await supabaseAdmin.from("orders").update({ steadfast_booking_status: "booking_error", steadfast_booking_error: bookingError instanceof Error ? bookingError.message : "Unknown error" }).eq("order_number", orderNumber);
     }
 
-    // ✨ নোটিফিকেশন মেসেজ (বারকোড ছাড়া, প্রোডাক্ট ছবিসহ)
+    // ✨ নোটিফিকেশন মেসেজ (নতুন ক্লিন ফরম্যাট)
     if (bookingSuccess) {
-      let msg = `🛒 <b>New Website Order!</b>\n\n🧾 <b>অর্ডার:</b> ${orderNumber}\n👤 <b>কাস্টমার:</b> ${body.customer_name}\n📞 <b>ফোন:</b> ${body.phone}\n📍 <b>ঠিকানা:</b> ${body.address}, ${body.upazila}, ${body.district}\n💰 <b>মোট বিল:</b> ৳${total}\n📦 <b>ট্র্যাকিং:</b> <code>${bookingTrackingCode}</code>`;
+      let msg = `🛒 <b>NEW WEBSITE ORDER</b> 🛒\n`;
+      msg += `━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `🧾 <b>Order ID:</b> <code>${orderNumber}</code>\n`;
+      msg += `📦 <b>Status:</b> <b>BOOKED</b>\n\n`;
+      
+      msg += `👤 <b>Customer:</b> ${body.customer_name}\n`;
+      msg += `📞 <b>Phone:</b> ${body.phone}\n`;
+      msg += `📍 <b>Address:</b> ${body.address}, ${body.upazila}, ${body.district}\n\n`;
+      
+      msg += `💰 <b>Total Bill:</b> ৳${total}\n`;
+      msg += `━━━━━━━━━━━━━━━━━━━\n`;
+      
+      msg += `🆔 <b>Consignment ID:</b> <b>${bookingConsignmentId}</b>\n`;
+      msg += `🚚 <b>Tracking:</b> <a href="https://steadfast.com.bd/t/${bookingTrackingCode}"><b>${bookingTrackingCode}</b></a>`;
+      
       const productImages = orderItems.map(item => item.imageUrl).filter(url => url !== "");
       waitUntil(sendTelegramNotify(msg, productImages));
     }

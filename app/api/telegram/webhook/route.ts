@@ -162,9 +162,23 @@ export async function POST(req: Request) {
         let successMsg = `✅ <b>বুকিং সফল!</b>\n\n🧾 অর্ডার: <b>${orderNumber}</b>\n👤 কাস্টমার: ${name}\n📞 ফোন: ${phone}\n🆔 কনসাইনমেন্ট: <b>${consignmentId}</b>\n📦 ট্র্যাকিং: <b>${trackingCode}</b>`;
         await sendTelegramMessage(BOT1_TOKEN!, chatId, successMsg);
 
-        // 🔔 Bot 2 (Notification) - ছবিসহ
+        // 🔔 Bot 2 (Notification) - নতুন ক্লিন ফরম্যাট
         if (bookingSuccess && NOTIFY_CHAT_ID) {
-          let notifyMsg = `🔔 <b>New Manual Order!</b>\n\n🧾 অর্ডার: ${orderNumber}\n👤 কাস্টমার: ${name}\n📞 ফোন: ${phone}\n📍 ঠিকানা: ${finalAddress}, ${finalUpazila}, ${finalDistrict}\n🛍️ প্রোডাক্ট: ${product.name} (${productCode})\n💰 বিল: ৳${total}\n🆔 কনসাইনমেন্ট: <code>${consignmentId}</code>\n🚚 ট্র্যাকিং: <code>${trackingCode}</code>`;
+          let notifyMsg = `🛒 <b>NEW MANUAL ORDER</b> 🛒\n`;
+          notifyMsg += `━━━━━━━━━━━━━━━━━━━\n`;
+          notifyMsg += `🧾 <b>Order ID:</b> <code>${orderNumber}</code>\n`;
+          notifyMsg += `📦 <b>Status:</b> <b>${bookingSuccess ? "BOOKED" : "PENDING"}</b>\n\n`;
+          
+          notifyMsg += `👤 <b>Customer:</b> ${name}\n`;
+          notifyMsg += `📞 <b>Phone:</b> ${phone}\n`;
+          notifyMsg += `📍 <b>Address:</b> ${finalAddress}, ${finalUpazila}, ${finalDistrict}\n\n`;
+          
+          notifyMsg += `🛍️ <b>Product:</b> ${product.name} (<code>${productCode}</code>)\n`;
+          notifyMsg += `💰 <b>Bill:</b> ৳${total}\n`;
+          notifyMsg += `━━━━━━━━━━━━━━━━━━━\n`;
+          
+          notifyMsg += `🆔 <b>Consignment ID:</b> <b>${consignmentId}</b>\n`;
+          notifyMsg += `🚚 <b>Tracking:</b> <a href="https://steadfast.com.bd/t/${trackingCode}"><b>${trackingCode}</b></a>`;
 
           let productImage = null;
           if (Array.isArray(product.images) && product.images.length > 0) {
