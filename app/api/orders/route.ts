@@ -9,20 +9,17 @@ type OrderRequest = { customer_name: string; phone: string; district: string; up
 
 const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbxFH2iBwJ1mdPazSOo6S67kiN22Ib6OLnzlQ6R3DsAS5h4hk-D6O_lpQHlE_kHGtPbchg/exec";
 
-// ✨ আপডেট করা ফাংশন: বারকোড ছাড়া, শুধু ছবিসহ মেসেজ
 async function sendTelegramNotify(message: string, images: string[] = []) {
   const token = process.env.TELEGRAM_BOT2_TOKEN;
   const chatId = process.env.TELEGRAM_NOTIFY_CHAT_ID;
   if (!token || !chatId) return;
 
   try {
-    // প্রথমে টেক্সট মেসেজ পাঠানো
     await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "HTML" }),
     });
 
-    // এরপর ছবিগুলো পাঠানো
     for (let i = 0; i < images.length; i++) {
       await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -87,6 +84,42 @@ export async function POST(request: Request) {
       };
     });
 
+    // ✨ ওয়েবসাইট ডুপ্লিকেট চেক (২৪ ঘণ্টায় একই নাম, ফোন ও প্রোডাক্ট অর্ডার হলে রিজেক্ট)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    try {
+      const { data: existingOrders } = await supabaseAdmin
+        .from("orders")
+        .select("id, order_number, created_at, order_items(product_name)")
+        .eq("phone", body.phone)
+        .eq("customer_name", body.customer_name)
+        .gte("created_at", twentyFourHoursAgo);
+
+      if (existingOrders && existingOrders.length > 0) {
+        let isDuplicate = false;
+        if (existingOrders[0].order_items) {
+          isDuplicate = existingOrders.some((order: any) => 
+            order.order_items?.some((existingItem: any) => 
+              orderItems.some((newItem: any) => 
+                newItem.productName?.toLowerCase() === existingItem.product_name?.toLowerCase()
+              )
+            )
+          );
+        } else {
+           isDuplicate = true; 
+        }
+
+        if (isDuplicate) {
+          return NextResponse.json({ 
+            success: false, 
+            message: "আপনি ইতিমধ্যে এই প্রোডাক্টটি অর্ডার করেছেন। অনুগ্রহ করে অপেক্ষা করুন, আমরা শীঘ্রই আপনার সাথে যোগাযোগ করব।" 
+          }, { status: 400 });
+        }
+      }
+    } catch (dupError: any) {
+      console.log("Website duplicate check error:", dupError.message);
+    }
+    // ✨ ডুপ্লিকেট চেক শেষ
+
     const subtotal = orderItems.reduce((sum, item) => sum + item.totalPrice, 0);
     const costTotal = orderItems.reduce((sum, item) => sum + item.costTotal, 0);
     const hasFreeDelivery = products.some((p: any) => p.is_free_delivery === true);
@@ -118,7 +151,7 @@ export async function POST(request: Request) {
 
     let bookingSuccess = false;
     let bookingTrackingCode = "Pending";
-    let bookingConsignmentId = "Pending"; // ✨ নতুন ভ্যারিয়েবল কনসাইনমেন্ট আইডির জন্য
+    let bookingConsignmentId = "Pending"; 
     
     try {
       const bookingResult = await createSteadfastBooking({
@@ -127,7 +160,7 @@ export async function POST(request: Request) {
       });
 
       bookingTrackingCode = bookingResult.trackingCode;
-      bookingConsignmentId = bookingResult.consignmentId; // ✨ কনসাইনমেন্ট আইডি সেভ করা হলো
+      bookingConsignmentId = bookingResult.consignmentId; 
 
       await supabaseAdmin.from("orders").update({
         steadfast_consignment_id: bookingResult.consignmentId, steadfast_tracking_code: bookingResult.trackingCode, steadfast_booking_status: "booked", steadfast_booking_date: bookingResult.bookedAt || new Date().toISOString(), steadfast_delivery_status: bookingResult.status,
@@ -137,38 +170,34 @@ export async function POST(request: Request) {
       await supabaseAdmin.from("orders").update({ steadfast_booking_status: "booking_error", steadfast_booking_error: bookingError instanceof Error ? bookingError.message : "Unknown error" }).eq("order_number", orderNumber);
     }
 
-// ✨ নোটিফিকেশন মেসেজ (নতুন ক্লিন ফরম্যাট)
-if (bookingSuccess) {
-  // ✨ তারিখ ও সময় বের করার কোড
-  const orderDateStr = new Date().toLocaleString("en-GB", { 
-    timeZone: "Asia/Dhaka", 
-    day: "2-digit", month: "short", year: "numeric", 
-    hour: "2-digit", minute: "2-digit", hour12: true 
-  });
+    // ✨ নোটিফিকেশন মেসেজ (তারিখ ও কপি বাটনসহ)
+    if (bookingSuccess) {
+      const orderDateStr = new Date().toLocaleString("en-GB", { 
+        timeZone: "Asia/Dhaka", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true 
+      });
 
-  let msg = `🛒 <b>NEW WEBSITE ORDER</b> 🛒\n`;
-  msg += `━━━━━━━━━━━━━━━━━━━\n`;
-  msg += `📅 <b>তারিখ:</b> <b>${orderDateStr}</b>\n`; // ✨ এখানে তারিখ যুক্ত হলো
-  msg += `🧾 <b>Order ID:</b> <code>${orderNumber}</code>\n`;
-  msg += `📦 <b>Status:</b> <b>BOOKED</b>\n\n`;
-  
-  msg += `👤 <b>Customer:</b> ${body.customer_name}\n`;
-  msg += `📞 <b>Phone:</b> ${body.phone}\n`;
-  msg += `📍 <b>Address:</b> ${body.address}, ${body.upazila}, ${body.district}\n\n`;
-  
-  msg += `💰 <b>Total Bill:</b> ৳${total}\n`;
-  msg += `━━━━━━━━━━━━━━━━━━━\n`;
-  
-  // ✨ কনসাইনমেন্ট আইডিও এখানে ক্লিকেবল (copy) করে দিলাম, যাতে দুই জায়গায় একই রকম দেখায়
-  msg += `🆔 <b>CONSIGNMENT ID</b> 🆔\n`;
-  msg += `<pre><b>${bookingConsignmentId}</b></pre>\n`;
-  msg += `👆 <i>কপি করতে ট্যাপ করুন</i>\n\n`;
+      let msg = `🛒 <b>NEW WEBSITE ORDER</b> 🛒\n`;
+      msg += `━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `📅 <b>তারিখ:</b> <b>${orderDateStr}</b>\n`;
+      msg += `🧾 <b>Order ID:</b> <code>${orderNumber}</code>\n`;
+      msg += `📦 <b>Status:</b> <b>BOOKED ✅</b>\n\n`;
+      
+      msg += `👤 <b>Customer:</b> ${body.customer_name}\n`;
+      msg += `📞 <b>Phone:</b> ${body.phone}\n`;
+      msg += `📍 <b>Address:</b> ${body.address}, ${body.upazila}, ${body.district}\n\n`;
+      
+      msg += `💰 <b>Total Bill:</b> ৳${total}\n`;
+      msg += `━━━━━━━━━━━━━━━━━━━\n\n`;
+      
+      msg += `🆔 <b>CONSIGNMENT ID</b> 🆔\n`;
+      msg += `<pre><b>${bookingConsignmentId}</b></pre>\n`;
+      msg += `👆 <i>কপি করতে ট্যাপ করুন</i>\n\n`;
 
-  msg += `🚚 <b>Tracking:</b> <a href="https://steadfast.com.bd/t/${bookingTrackingCode}"><b>${bookingTrackingCode}</b></a>`;
-  
-  const productImages = orderItems.map(item => item.imageUrl).filter(url => url !== "");
-  waitUntil(sendTelegramNotify(msg, productImages));
-}
+      msg += `🚚 <b>Tracking:</b> <a href="https://steadfast.com.bd/t/${bookingTrackingCode}"><b>${bookingTrackingCode}</b></a>`;
+      
+      const productImages = orderItems.map(item => item.imageUrl).filter(url => url !== "");
+      waitUntil(sendTelegramNotify(msg, productImages));
+    }
 
     return NextResponse.json({ success: true, order_number: orderNumber, order_date: orderDate, total, booking_status: bookingSuccess ? "booked" : "error" });
 

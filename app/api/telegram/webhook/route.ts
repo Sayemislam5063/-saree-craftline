@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabase/server";
 import { checkSteadfastFraud, createSteadfastBooking } from "../../../../lib/steadfast/client";
 
-// ✨ .trim() যোগ করা হয়েছে যাতে বাড়তি স্পেস থাকলেও সমস্যা না হয়
 const BOT1_TOKEN = process.env.TELEGRAM_BOT1_TOKEN?.trim();
 const BOT2_TOKEN = process.env.TELEGRAM_BOT2_TOKEN?.trim();
 const NOTIFY_CHAT_ID = process.env.TELEGRAM_NOTIFY_CHAT_ID?.trim();
@@ -26,11 +25,12 @@ export async function POST(req: Request) {
     const chatId = message.chat.id;
     const text = message.text.trim();
 
-    // ✨ সিকিউরিটি চেক (শুধু আপনি ছাড়া অন্য কেউ মেসেজ দিলে বট রিপ্লাই দেবে না)
+    // সিকিউরিটি চেক
     if (ADMIN_CHAT_ID && chatId.toString() !== ADMIN_CHAT_ID) {
       return NextResponse.json({ ok: true });
     }
-       // ১. ফ্রড চেক
+
+    // ১. ফ্রড চেক
     if (text.startsWith("/fc ")) {
       const phone = text.split(" ")[1];
       if (!phone) return sendTelegramMessage(BOT1_TOKEN!, chatId, "⚠️ ফোন নাম্বার দিন।");
@@ -40,7 +40,6 @@ export async function POST(req: Request) {
       try {
         const fraudData = await checkSteadfastFraud(phone);
         
-        // ✨ ডিবাগ লাইন বাদ দেওয়া হলো এবং Parcel Volume বাদ দেওয়া হলো
         let msg = `<b>📊 Steadfast Fraud Report</b>\n\n`;
         msg += `✅ <b>Delivered:</b> ${fraudData.deliveryRatio ?? 0}%\n`;
         msg += `❌ <b>Cancelled:</b> ${fraudData.cancellationRatio ?? 0}%\n`;
@@ -53,7 +52,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // ২. অর্ডার চেক (/ck 017XXXXXXXX)
+    // ২. অর্ডার চেক
     else if (text.startsWith("/ck ")) {
       const phone = text.split(" ")[1];
       if (!phone) return sendTelegramMessage(BOT1_TOKEN!, chatId, "⚠️ ফোন নাম্বার দিন।");
@@ -81,7 +80,7 @@ export async function POST(req: Request) {
       await sendTelegramMessage(BOT1_TOKEN!, chatId, msg);
     }
 
-    // ৩. ম্যানুয়াল অর্ডার (কোনো কমান্ড ছাড়া, শুধু ফরম্যাট লিখলেই হবে)
+    // ৩. ম্যানুয়াল অর্ডার
     else if (text.toLowerCase().includes("name:") && text.toLowerCase().includes("mob:")) {
       await sendTelegramMessage(BOT1_TOKEN!, chatId, "🔄 অর্ডার প্রসেস হচ্ছে...");
 
@@ -102,6 +101,38 @@ export async function POST(req: Request) {
 
         const { data: product, error: prodErr } = await supabaseAdmin.from("products").select("*").eq("product_code", productCode).single();
         if (prodErr || !product) throw new Error("প্রোডাক্ট কোডটি খুঁজে পাওয়া যায়নি!");
+
+        // ✨ ডুপ্লিকেট চেক (২৪ ঘণ্টায় একই নাম, ফোন ও প্রোডাক্ট অর্ডার হলে রিজেক্ট)
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        try {
+          const { data: existingOrders } = await supabaseAdmin
+            .from("orders")
+            .select("id, order_number, created_at, order_items(product_name)")
+            .eq("phone", phone)
+            .eq("customer_name", name)
+            .gte("created_at", twentyFourHoursAgo);
+
+          if (existingOrders && existingOrders.length > 0) {
+            let isDuplicate = false;
+            if (existingOrders[0].order_items) {
+              isDuplicate = existingOrders.some((order: any) => 
+                order.order_items?.some((item: any) => 
+                  item.product_name?.toLowerCase() === product.name.toLowerCase()
+                )
+              );
+            } else {
+              isDuplicate = true; 
+            }
+
+            if (isDuplicate) {
+              await sendTelegramMessage(BOT1_TOKEN!, chatId, `⚠️ <b>রিজেক্ট!</b>\n\nএই কাস্টমার (${name}) ইতিমধ্যে এই প্রোডাক্টটি (${product.name}) গত ২৪ ঘণ্টায় অর্ডার করেছেন।\n\n🧾 অর্ডার নাম্বার: <b>${existingOrders[0].order_number}</b>\n\nতাই নতুন করে বুকিং করা হলো না।`);
+              return NextResponse.json({ ok: true });
+            }
+          }
+        } catch (dupError: any) {
+          console.log("Duplicate check error:", dupError.message);
+        }
+        // ✨ ডুপ্লিকেট চেক শেষ
 
         const price = product.single_price || product.without_blouse_price || 0;
         const deliveryCharge = product.is_free_delivery ? 0 : 130;
@@ -161,51 +192,45 @@ export async function POST(req: Request) {
 
         let successMsg = `✅ <b>বুকিং সফল!</b>\n\n🧾 অর্ডার: <b>${orderNumber}</b>\n👤 কাস্টমার: ${name}\n📞 ফোন: ${phone}\n🆔 কনসাইনমেন্ট: <b>${consignmentId}</b>\n📦 ট্র্যাকিং: <b>${trackingCode}</b>`;
         await sendTelegramMessage(BOT1_TOKEN!, chatId, successMsg);
-// 🔔 Bot 2 (Notification) - নতুন ক্লিন ফরম্যাট
-if (bookingSuccess && NOTIFY_CHAT_ID) {
-  // ✨ তারিখ ও সময় বের করার কোড
-  const orderDateStr = new Date().toLocaleString("en-GB", { 
-    timeZone: "Asia/Dhaka", 
-    day: "2-digit", month: "short", year: "numeric", 
-    hour: "2-digit", minute: "2-digit", hour12: true 
-  });
 
-  let notifyMsg = `🛒 <b>NEW MANUAL ORDER</b> 🛒\n`;
-  notifyMsg += `━━━━━━━━━━━━━━━━━━━\n`;
-  notifyMsg += `📅 <b>তারিখ:</b> <b>${orderDateStr}</b>\n`; // ✨ এখানে তারিখ যুক্ত হলো
-  notifyMsg += `🧾 <b>Order ID:</b> <code>${orderNumber}</code>\n`;
-  notifyMsg += `📦 <b>Status:</b> <b>${bookingSuccess ? "BOOKED ✅" : "PENDING ⏳"}</b>\n\n`;
+        // 🔔 Bot 2 (Notification)
+        if (bookingSuccess && NOTIFY_CHAT_ID) {
+          const orderDateStr = new Date().toLocaleString("en-GB", { 
+            timeZone: "Asia/Dhaka", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true 
+          });
 
-  notifyMsg += `👤 <b>Customer:</b> ${name}\n`;
-  notifyMsg += `📞 <b>Phone:</b> <code>${phone}</code>\n`;
-  notifyMsg += `📍 <b>Address:</b> ${finalAddress}, ${finalUpazila}, ${finalDistrict}\n\n`;
+          let notifyMsg = `🛒 <b>NEW MANUAL ORDER</b> 🛒\n`;
+          notifyMsg += `━━━━━━━━━━━━━━━━━━━\n`;
+          notifyMsg += `📅 <b>তারিখ:</b> <b>${orderDateStr}</b>\n`;
+          notifyMsg += `🧾 <b>Order ID:</b> <code>${orderNumber}</code>\n`;
+          notifyMsg += `📦 <b>Status:</b> <b>${bookingSuccess ? "BOOKED ✅" : "PENDING ⏳"}</b>\n\n`;
+          notifyMsg += `👤 <b>Customer:</b> ${name}\n`;
+          notifyMsg += `📞 <b>Phone:</b> <code>${phone}</code>\n`;
+          notifyMsg += `📍 <b>Address:</b> ${finalAddress}, ${finalUpazila}, ${finalDistrict}\n\n`;
+          notifyMsg += `🛍️ <b>Product:</b> ${product.name} (<code>${productCode}</code>)\n`;
+          notifyMsg += `💰 <b>Bill:</b> ৳${total}\n`;
+          notifyMsg += `━━━━━━━━━━━━━━━━━━━\n\n`;
+          
+          notifyMsg += `🆔 <b>CONSIGNMENT ID</b> 🆔\n`;
+          notifyMsg += `<pre><b>${consignmentId}</b></pre>\n`;
+          notifyMsg += `👆 <i>কপি করতে ট্যাপ করুন</i>\n\n`;
+          notifyMsg += `🚚 <b>Tracking:</b> <a href="https://steadfast.com.bd/t/${trackingCode}"><b>${trackingCode}</b></a>`;
 
-  notifyMsg += `🛍️ <b>Product:</b> ${product.name} (<code>${productCode}</code>)\n`;
-  notifyMsg += `💰 <b>Bill:</b> ৳${total}\n`;
-  notifyMsg += `━━━━━━━━━━━━━━━━━━━\n\n`;
+          let productImage = null;
+          if (Array.isArray(product.images) && product.images.length > 0) {
+            const img = product.images[product.thumbnail_index || 0] || product.images[0];
+            productImage = typeof img === 'string' ? img : img?.url;
+          }
 
-  // 🔥 হাইলাইট করা Consignment ID — Tap to Copy
-  notifyMsg += `🆔 <b>CONSIGNMENT ID</b> 🆔\n`;
-  notifyMsg += `<pre><b>${consignmentId}</b></pre>\n`;
-  notifyMsg += `👆 <i>কপি করতে ট্যাপ করুন</i>\n\n`;
-
-  notifyMsg += `🚚 <b>Tracking:</b> <a href="https://steadfast.com.bd/t/${trackingCode}"><b>${trackingCode}</b></a>`;
-
-  let productImage = null;
-  if (Array.isArray(product.images) && product.images.length > 0) {
-    const img = product.images[product.thumbnail_index || 0] || product.images[0];
-    productImage = typeof img === 'string' ? img : img?.url;
-  }
-
-  if (productImage) {
-    await fetch(`https://api.telegram.org/bot${BOT2_TOKEN}/sendPhoto`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: NOTIFY_CHAT_ID, photo: productImage, caption: notifyMsg, parse_mode: "HTML" }),
-    });
-  } else {
-    await sendTelegramMessage(BOT2_TOKEN!, NOTIFY_CHAT_ID, notifyMsg);
-  }
-}
+          if (productImage) {
+            await fetch(`https://api.telegram.org/bot${BOT2_TOKEN}/sendPhoto`, {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: NOTIFY_CHAT_ID, photo: productImage, caption: notifyMsg, parse_mode: "HTML" }),
+            });
+          } else {
+            await sendTelegramMessage(BOT2_TOKEN!, NOTIFY_CHAT_ID, notifyMsg);
+          }
+        }
 
       } catch (err: any) {
         await sendTelegramMessage(BOT1_TOKEN!, chatId, `❌ বুকিং ব্যর্থ: ${err.message}`);
