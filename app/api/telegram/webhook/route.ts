@@ -31,7 +31,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    // ১. ফ্রড চেক (/fc 017XXXXXXXX)
+        // ১. ফ্রড চেক
     if (text.startsWith("/fc ")) {
       const phone = text.split(" ")[1];
       if (!phone) return sendTelegramMessage(BOT1_TOKEN!, chatId, "⚠️ ফোন নাম্বার দিন।");

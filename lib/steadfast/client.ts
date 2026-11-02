@@ -118,20 +118,47 @@ export async function checkSteadfastFraud(
     return null;
   };
 
-  // ✨ সব সম্ভাব্য ফিল্ডের নাম চেক করা হচ্ছে (তাকি ০ না আসে)
-  const delivered = asNumber(data.total_delivered) ?? asNumber(data.delivered_count) ?? asNumber(data.delivered) ?? 0;
-  const cancelled = asNumber(data.total_cancelled) ?? asNumber(data.cancelled_count) ?? asNumber(data.cancelled) ?? 0;
-  const parcels = asNumber(data.total_parcels) ?? asNumber(data.total_parcel) ?? asNumber(data.parcel_volume) ?? (delivered + cancelled);
+  // ✨ Steadfast API-এর সম্ভাব্য সব ফিল্ডের নাম চেক করা হচ্ছে
+  const delivered = 
+    asNumber(data.total_delivered) ?? 
+    asNumber(data.delivered_count) ?? 
+    asNumber(data.delivered) ?? 
+    asNumber(data.delivered_parcels) ?? 
+    asNumber(data.success_parcels) ?? 
+    asNumber(data.success_count) ?? 0;
 
-  const totalFraudReports = Math.max(0, asNumber(data.total_reports) ?? asNumber(data.total_fraud_reports) ?? 0);
-  const score = asNumber(data.score);
+  const cancelled = 
+    asNumber(data.total_cancelled) ?? 
+    asNumber(data.cancelled_count) ?? 
+    asNumber(data.cancelled) ?? 
+    asNumber(data.cancelled_parcels) ?? 
+    asNumber(data.return_parcels) ?? 
+    asNumber(data.cancel_count) ?? 0;
+
+  const parcels = 
+    asNumber(data.total_parcels) ?? 
+    asNumber(data.total_parcel) ?? 
+    asNumber(data.parcel_volume) ?? 
+    asNumber(data.total_packets) ?? 
+    asNumber(data.parcels) ?? 
+    asNumber(data.total_parcel_count) ?? 
+    (delivered + cancelled);
+
+  const totalFraudReports = Math.max(
+    0,
+    asNumber(data.total_reports) ?? 
+    asNumber(data.total_fraud_reports) ?? 
+    asNumber(data.fraud_reports) ?? 0
+  );
+
+  const score = asNumber(data.score) ?? asNumber(data.fraud_score);
   const level = typeof data.level === "string" && data.level.trim() ? data.level.trim() : null;
   const scoringDisabled = data.scoring_disabled === true;
   const doubtfulReports = data.doubtful_reports === true;
   const fraudCategories = Array.isArray(data.fraud_categories) ? data.fraud_categories.filter((item): item is string => typeof item === "string") : [];
 
-  const deliveryRatio = asNumber(data.delivery_ratio);
-  const cancellationRatio = asNumber(data.cancellation_ratio);
+  const deliveryRatio = asNumber(data.delivery_ratio) ?? asNumber(data.success_ratio) ?? asNumber(data.delivered_ratio);
+  const cancellationRatio = asNumber(data.cancellation_ratio) ?? asNumber(data.cancel_ratio);
   const returnRatio = asNumber(data.return_ratio);
 
   const isFraud = totalFraudReports > 0 || doubtfulReports || fraudCategories.length > 0;
