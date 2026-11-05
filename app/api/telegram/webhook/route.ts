@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import { supabaseAdmin } from "../../../../lib/supabase/server";
 import { checkSteadfastFraud, createSteadfastBooking } from "../../../../lib/steadfast/client";
 
@@ -6,6 +7,8 @@ const BOT1_TOKEN = process.env.TELEGRAM_BOT1_TOKEN?.trim();
 const BOT2_TOKEN = process.env.TELEGRAM_BOT2_TOKEN?.trim();
 const NOTIFY_CHAT_ID = process.env.TELEGRAM_NOTIFY_CHAT_ID?.trim();
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID?.trim();
+
+const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbxFH2iBwJ1mdPazSOo6S67kiN22Ib6OLnzlQ6R3DsAS5h4hk-D6O_lpQHlE_kHGtPbchg/exec";
 
 async function sendTelegramMessage(botToken: string, chatId: number | string, text: string) {
   await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -25,7 +28,6 @@ export async function POST(req: Request) {
     const chatId = message.chat.id;
     const text = message.text.trim();
 
-    // সিকিউরিটি চেক
     if (ADMIN_CHAT_ID && chatId.toString() !== ADMIN_CHAT_ID) {
       return NextResponse.json({ ok: true });
     }
@@ -39,13 +41,11 @@ export async function POST(req: Request) {
 
       try {
         const fraudData = await checkSteadfastFraud(phone);
-        
         let msg = `<b>📊 Steadfast Fraud Report</b>\n\n`;
         msg += `✅ <b>Delivered:</b> ${fraudData.deliveryRatio ?? 0}%\n`;
         msg += `❌ <b>Cancelled:</b> ${fraudData.cancellationRatio ?? 0}%\n`;
         msg += `📈 <b>Success Rate:</b> ${fraudData.deliveryRatio ?? 0}%\n\n`;
         msg += `🛡️ <b>Fraud Reports:</b> ${fraudData.totalFraudReports ?? 0}`;
-
         await sendTelegramMessage(BOT1_TOKEN!, chatId, msg);
       } catch (err: any) {
         await sendTelegramMessage(BOT1_TOKEN!, chatId, `❌ ফ্রড চেক ব্যর্থ: ${err.message}`);
@@ -76,11 +76,10 @@ export async function POST(req: Request) {
       msg += `📦 <b>Status:</b> ${order.steadfast_delivery_status || "Pending"}\n`;
       msg += `🆔 <b>Consignment ID:</b> ${order.steadfast_consignment_id || "N/A"}\n`;
       msg += `🚚 <b>Tracking:</b> ${order.steadfast_tracking_code || "N/A"}`;
-
       await sendTelegramMessage(BOT1_TOKEN!, chatId, msg);
     }
 
-    // ৩. ম্যানুয়াল অর্ডার
+    // ৩. ম্যানুয়াল অর্ডার (টেলিগ্রাম)
     else if (text.toLowerCase().includes("name:") && text.toLowerCase().includes("mob:")) {
       await sendTelegramMessage(BOT1_TOKEN!, chatId, "🔄 অর্ডার প্রসেস হচ্ছে...");
 
@@ -102,64 +101,50 @@ export async function POST(req: Request) {
         const { data: product, error: prodErr } = await supabaseAdmin.from("products").select("*").eq("product_code", productCode).single();
         if (prodErr || !product) throw new Error("প্রোডাক্ট কোডটি খুঁজে পাওয়া যায়নি!");
 
-        // ✨ ডুপ্লিকেট চেক (২৪ ঘণ্টায় একই নাম, ফোন ও প্রোডাক্ট অর্ডার হলে রিজেক্ট)
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        try {
-          const { data: existingOrders } = await supabaseAdmin
-            .from("orders")
-            .select("id, order_number, created_at, order_items(product_name)")
-            .eq("phone", phone)
-            .eq("customer_name", name)
-            .gte("created_at", twentyFourHoursAgo);
+        // ✨ নতুন লজিক: আগের অর্ডার চেক (রিজেক্ট না করে হিস্ট্রি বের করা)
+        const { data: previousOrders } = await supabaseAdmin
+          .from("orders")
+          .select("order_number, created_at, total, steadfast_delivery_status")
+          .eq("phone", phone)
+          .order("created_at", { ascending: false })
+          .limit(5);
 
-          if (existingOrders && existingOrders.length > 0) {
-            let isDuplicate = false;
-            if (existingOrders[0].order_items) {
-              isDuplicate = existingOrders.some((order: any) => 
-                order.order_items?.some((item: any) => 
-                  item.product_name?.toLowerCase() === product.name.toLowerCase()
-                )
-              );
-            } else {
-              isDuplicate = true; 
-            }
-
-            if (isDuplicate) {
-              await sendTelegramMessage(BOT1_TOKEN!, chatId, `⚠️ <b>রিজেক্ট!</b>\n\nএই কাস্টমার (${name}) ইতিমধ্যে এই প্রোডাক্টটি (${product.name}) গত ২৪ ঘণ্টায় অর্ডার করেছেন।\n\n🧾 অর্ডার নাম্বার: <b>${existingOrders[0].order_number}</b>\n\nতাই নতুন করে বুকিং করা হলো না।`);
-              return NextResponse.json({ ok: true });
-            }
-          }
-        } catch (dupError: any) {
-          console.log("Duplicate check error:", dupError.message);
+        let historyMsg = "";
+        if (previousOrders && previousOrders.length > 0) {
+          historyMsg = `\n⚠️ <b>এই নাম্বারে আগের অর্ডারগুলো:</b>\n`;
+          previousOrders.forEach((o: any, index: number) => {
+            const d = new Date(o.created_at).toLocaleString("en-GB", { timeZone: "Asia/Dhaka", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+            const status = o.steadfast_delivery_status ? o.steadfast_delivery_status.toUpperCase() : "PENDING";
+            historyMsg += `${index + 1}️⃣ ${d} | 💰 ${o.total}৳ | 📦 ${status}\n`;
+          });
+          historyMsg += `━━━━━━━━━━━━━━━━━━━\n`;
         }
-        // ✨ ডুপ্লিকেট চেক শেষ
 
         const price = product.single_price || product.without_blouse_price || 0;
         const deliveryCharge = product.is_free_delivery ? 0 : 130;
         const total = price + deliveryCharge;
         const orderNumber = `TG-${Date.now().toString().slice(-6)}`;
+        const orderDate = new Date().toISOString();
 
         const finalDistrict = jela || "N/A";
         const finalUpazila = thana || "N/A";
         const finalAddress = address || "N/A";
 
         const { error: orderError } = await supabaseAdmin.rpc("create_order_with_stock", {
-          p_order_number: orderNumber, 
-          p_customer_name: name, 
-          p_phone: phone, 
-          p_district: finalDistrict, 
-          p_upazila: finalUpazila, 
-          p_address: finalAddress, 
-          p_note: "Telegram Bot Order", 
-          p_delivery_type: "outsideDhaka",
+          p_order_number: orderNumber, p_customer_name: name, p_phone: phone, p_district: finalDistrict, p_upazila: finalUpazila, p_address: finalAddress, p_note: "Telegram Bot Order", p_delivery_type: "outsideDhaka",
           p_items: [{ productId: product.id, productName: product.name, quantity: 1, unitPrice: price, totalPrice: price, costPrice: 0, costTotal: 0 }],
-          p_subtotal: price, 
-          p_delivery_charge: deliveryCharge, 
-          p_total: total, 
-          p_cost_total: 0,
+          p_subtotal: price, p_delivery_charge: deliveryCharge, p_total: total, p_cost_total: 0,
         });
 
         if (orderError) throw new Error("ডাটাবেসে অর্ডার সেভ হয়নি: " + orderError.message);
+
+        // ✨ গুগল শিটে ডাটা পাঠানো
+        const sheetPayload = { 
+          order_id: orderNumber, order_date: orderDate, customer_name: name, phone: phone, district: finalDistrict, upazila: finalUpazila, address: finalAddress, 
+          items: [{ productName: product.name, quantity: 1, unitPrice: price }], 
+          subtotal: price, delivery_charge: deliveryCharge, total: total, status: "pending", purchase_cost: 0 
+        };
+        waitUntil(fetch(GOOGLE_SHEET_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sheetPayload) }).catch(err => console.error("Sheet Error:", err)));
 
         let bookingSuccess = false;
         let trackingCode = "N/A";
@@ -167,20 +152,11 @@ export async function POST(req: Request) {
         
         try {
           const booking = await createSteadfastBooking({
-            invoice: orderNumber, 
-            recipient_name: name, 
-            recipient_phone: phone, 
-            recipient_address: `${finalAddress}, ${finalUpazila}, ${finalDistrict}`, 
-            cod_amount: total, 
-            item_description: `${product.name} x1`,
+            invoice: orderNumber, recipient_name: name, recipient_phone: phone, recipient_address: `${finalAddress}, ${finalUpazila}, ${finalDistrict}`, cod_amount: total, item_description: `${product.name} x1`,
           });
 
           await supabaseAdmin.from("orders").update({
-            steadfast_consignment_id: booking.consignmentId, 
-            steadfast_tracking_code: booking.trackingCode, 
-            steadfast_booking_status: "booked", 
-            steadfast_booking_date: booking.bookedAt || new Date().toISOString(), 
-            steadfast_delivery_status: booking.status,
+            steadfast_consignment_id: booking.consignmentId, steadfast_tracking_code: booking.trackingCode, steadfast_booking_status: "booked", steadfast_booking_date: booking.bookedAt || new Date().toISOString(), steadfast_delivery_status: booking.status,
           }).eq("order_number", orderNumber);
 
           trackingCode = booking.trackingCode;
@@ -193,28 +169,12 @@ export async function POST(req: Request) {
         let successMsg = `✅ <b>বুকিং সফল!</b>\n\n🧾 অর্ডার: <b>${orderNumber}</b>\n👤 কাস্টমার: ${name}\n📞 ফোন: ${phone}\n🆔 কনসাইনমেন্ট: <b>${consignmentId}</b>\n📦 ট্র্যাকিং: <b>${trackingCode}</b>`;
         await sendTelegramMessage(BOT1_TOKEN!, chatId, successMsg);
 
-        // 🔔 Bot 2 (Notification)
         if (bookingSuccess && NOTIFY_CHAT_ID) {
-          const orderDateStr = new Date().toLocaleString("en-GB", { 
-            timeZone: "Asia/Dhaka", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true 
-          });
-
-          let notifyMsg = `🛒 <b>NEW MANUAL ORDER</b> 🛒\n`;
-          notifyMsg += `━━━━━━━━━━━━━━━━━━━\n`;
-          notifyMsg += `📅 <b>তারিখ:</b> <b>${orderDateStr}</b>\n`;
-          notifyMsg += `🧾 <b>Order ID:</b> <code>${orderNumber}</code>\n`;
-          notifyMsg += `📦 <b>Status:</b> <b>${bookingSuccess ? "BOOKED ✅" : "PENDING ⏳"}</b>\n\n`;
-          notifyMsg += `👤 <b>Customer:</b> ${name}\n`;
-          notifyMsg += `📞 <b>Phone:</b> <code>${phone}</code>\n`;
-          notifyMsg += `📍 <b>Address:</b> ${finalAddress}, ${finalUpazila}, ${finalDistrict}\n\n`;
-          notifyMsg += `🛍️ <b>Product:</b> ${product.name} (<code>${productCode}</code>)\n`;
-          notifyMsg += `💰 <b>Bill:</b> ৳${total}\n`;
-          notifyMsg += `━━━━━━━━━━━━━━━━━━━\n\n`;
+          const orderDateStr = new Date().toLocaleString("en-GB", { timeZone: "Asia/Dhaka", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
           
-          notifyMsg += `🆔 <b>CONSIGNMENT ID</b> 🆔\n`;
-          notifyMsg += `<pre><b>${consignmentId}</b></pre>\n`;
-          notifyMsg += `👆 <i>কপি করতে ট্যাপ করুন</i>\n\n`;
-          notifyMsg += `🚚 <b>Tracking:</b> <a href="https://steadfast.com.bd/t/${trackingCode}"><b>${trackingCode}</b></a>`;
+          let notifyMsg = `🛒 <b>NEW MANUAL ORDER</b> 🛒\n━━━━━━━━━━━━━━━━━━━\n📅 <b>তারিখ:</b> <b>${orderDateStr}</b>\n🧾 <b>Order ID:</b> <code>${orderNumber}</code>\n📦 <b>Status:</b> <b>BOOKED ✅</b>\n\n👤 <b>Customer:</b> ${name}\n📞 <b>Phone:</b> <code>${phone}</code>\n📍 <b>Address:</b> ${finalAddress}, ${finalUpazila}, ${finalDistrict}\n\n🛍️ <b>Product:</b> ${product.name} (<code>${productCode}</code>)\n💰 <b>Bill:</b> ৳${total}\n\n`;
+          notifyMsg += historyMsg; // ✨ এখানে আগের অর্ডারের হিস্ট্রি যুক্ত হলো
+          notifyMsg += `\n🆔 <b>CONSIGNMENT ID</b> 🆔\n<pre><b>${consignmentId}</b></pre>\n👆 <i>কপি করতে ট্যাপ করুন</i>\n\n🚚 <b>Tracking:</b> <a href="https://steadfast.com.bd/t/${trackingCode}"><b>${trackingCode}</b></a>`;
 
           let productImage = null;
           if (Array.isArray(product.images) && product.images.length > 0) {
@@ -224,19 +184,16 @@ export async function POST(req: Request) {
 
           if (productImage) {
             await fetch(`https://api.telegram.org/bot${BOT2_TOKEN}/sendPhoto`, {
-              method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: NOTIFY_CHAT_ID, photo: productImage, caption: notifyMsg, parse_mode: "HTML" }),
+              method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: NOTIFY_CHAT_ID, photo: productImage, caption: notifyMsg, parse_mode: "HTML" }),
             });
           } else {
             await sendTelegramMessage(BOT2_TOKEN!, NOTIFY_CHAT_ID, notifyMsg);
           }
         }
-
       } catch (err: any) {
         await sendTelegramMessage(BOT1_TOKEN!, chatId, `❌ বুকিং ব্যর্থ: ${err.message}`);
       }
     }
-
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Telegram Webhook Error:", error);
