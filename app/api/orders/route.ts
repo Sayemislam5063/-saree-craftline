@@ -189,6 +189,141 @@ async function sendTelegramPhoto(
       );
     }
 
+async function sendTelegramAlbum(
+  token: string,
+  chatId: string,
+  imageUrls: string[]
+): Promise<number> {
+  const uniqueImages = [...new Set(imageUrls.filter(isHttpUrl))];
+  let sentCount = 0;
+
+  // Telegram একটি Album-এ সর্বোচ্চ ১০টি ছবি নেয়।
+  for (let start = 0; start < uniqueImages.length; start += 10) {
+    const group = uniqueImages.slice(start, start + 10);
+
+    // একটি ছবি থাকলে sendPhoto ব্যবহার হবে।
+    if (group.length === 1) {
+      try {
+        await sendTelegramPhoto(token, chatId, group[0]);
+        sentCount++;
+      } catch (error) {
+        console.error("Telegram single photo failed:", error);
+      }
+      continue;
+    }
+
+    // প্রথমে URL দিয়ে Album পাঠানোর চেষ্টা।
+    try {
+      await telegramApi(token, "sendMediaGroup", {
+        chat_id: chatId,
+        media: group.map((url) => ({
+          type: "photo",
+          media: url,
+        })),
+      });
+
+      sentCount += group.length;
+      continue;
+    } catch (error) {
+      console.error(
+        "Telegram URL album failed; trying file upload:",
+        error
+      );
+    }
+
+    // URL দিয়ে না হলে ছবিগুলো Server থেকে Upload করবে।
+    try {
+      const form = new FormData();
+      form.append("chat_id", chatId);
+
+      const media: Array<{ type: "photo"; media: string }> = [];
+
+      for (let i = 0; i < group.length; i++) {
+        const imageResponse = await fetch(group[i], {
+          redirect: "follow",
+          cache: "no-store",
+        });
+
+        if (!imageResponse.ok) {
+          throw new Error(
+            `Image download failed: ${imageResponse.status}`
+          );
+        }
+
+        const blob = await imageResponse.blob();
+
+        if (!blob.size) {
+          throw new Error("Downloaded image is empty.");
+        }
+
+        const fieldName = `photo${i}`;
+        const extension = blob.type.includes("png")
+          ? "png"
+          : blob.type.includes("webp")
+            ? "webp"
+            : "jpg";
+
+        form.append(
+          fieldName,
+          blob,
+          `${fieldName}.${extension}`
+        );
+
+        media.push({
+          type: "photo",
+          media: `attach://${fieldName}`,
+        });
+      }
+
+      form.append("media", JSON.stringify(media));
+
+      const response = await fetch(
+        `https://api.telegram.org/bot${token}/sendMediaGroup`,
+        {
+          method: "POST",
+          body: form,
+          cache: "no-store",
+        }
+      );
+
+      const responseText = await response.text();
+      let result: any = null;
+
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        // Raw response নিচে ব্যবহার হবে।
+      }
+
+      if (!response.ok || result?.ok !== true) {
+        throw new Error(
+          result?.description ||
+            `Album upload failed: ${responseText.slice(0, 300)}`
+        );
+      }
+
+      sentCount += group.length;
+    } catch (uploadError) {
+      console.error(
+        "Telegram album upload failed; trying individual photos:",
+        uploadError
+      );
+
+      // Album সম্ভব না হলে ছবিগুলো হারিয়ে না যাওয়ার fallback।
+      for (const url of group) {
+        try {
+          await sendTelegramPhoto(token, chatId, url);
+          sentCount++;
+        } catch (photoError) {
+          console.error("Telegram photo failed:", photoError);
+        }
+      }
+    }
+  }
+
+  return sentCount;
+}
+
     const imageBlob = await imageResponse.blob();
     const filename =
       imageUrl.split("?")[0].split("/").pop() || "product-image.jpg";
@@ -224,29 +359,97 @@ async function sendTelegramPhoto(
   }
 }
 
-async function sendTelegramNotify(message: string, images: string[] = []) {
+
+async function sendTelegramAlbum(
+  token: string,
+  chatId: string,
+  imageUrls: string[]
+): Promise<number> {
+  const uniqueImages = [
+    ...new Set(imageUrls.filter(isHttpUrl)),
+  ];
+
+  let sentCount = 0;
+
+  // প্রতি Album-এ সর্বোচ্চ ১০টি ছবি
+  for (let start = 0; start < uniqueImages.length; start += 10) {
+    const group = uniqueImages.slice(start, start + 10);
+
+    if (group.length === 1) {
+      try {
+        await sendTelegramPhoto(token, chatId, group[0]);
+        sentCount++;
+      } catch (error) {
+        console.error("Telegram photo failed:", error);
+      }
+      continue;
+    }
+
+    try {
+      await telegramApi(token, "sendMediaGroup", {
+        chat_id: chatId,
+        media: group.map((url) => ({
+          type: "photo",
+          media: url,
+        })),
+      });
+
+      sentCount += group.length;
+    } catch (error) {
+      console.error(
+        "Telegram album failed, trying individual photos:",
+        error
+      );
+
+      // Album ব্যর্থ হলে ছবিগুলো আলাদাভাবে পাঠাবে
+      for (const url of group) {
+        try {
+          await sendTelegramPhoto(token, chatId, url);
+          sentCount++;
+        } catch (photoError) {
+          console.error("Photo send failed:", photoError);
+        }
+      }
+    }
+  }
+
+  return sentCount;
+}
+
+
+async function sendTelegramNotify(
+  message: string,
+  images: string[] = []
+) {
   const token = process.env.TELEGRAM_BOT2_TOKEN?.trim();
   const chatId = process.env.TELEGRAM_NOTIFY_CHAT_ID?.trim();
 
   if (!token || !chatId) {
-    console.error("Telegram notification skipped: bot token or notify chat ID is missing.");
+    console.error(
+      "Telegram notification skipped: missing token or chat ID."
+    );
     return;
   }
 
-  const validImages = [...new Set(images.filter(isHttpUrl))];
+  const validImages = [
+    ...new Set(
+      images
+        .map((image) => image.trim())
+        .filter(isHttpUrl)
+    ),
+  ];
+
   let sentImages = 0;
 
-  for (const imageUrl of validImages) {
-    try {
-      await sendTelegramPhoto(token, chatId, imageUrl);
-      sentImages += 1;
-    } catch (error) {
-      console.error("Telegram product image send failed:", error);
-    }
+  if (validImages.length > 0) {
+    sentImages = await sendTelegramAlbum(
+      token,
+      chatId,
+      validImages
+    );
   }
 
-  // Send the complete order details as a separate message. This avoids Telegram's
-  // 1024-character photo-caption limit and guarantees the text is not lost if a photo fails.
+  // পূর্ণ Order Details আলাদা Message হিসেবে যাবে।
   try {
     await telegramApi(token, "sendMessage", {
       chat_id: chatId,
@@ -255,11 +458,16 @@ async function sendTelegramNotify(message: string, images: string[] = []) {
       disable_web_page_preview: true,
     });
   } catch (error) {
-    console.error("Telegram order message send failed:", error);
+    console.error(
+      "Telegram order message send failed:",
+      error
+    );
   }
 
   if (validImages.length > 0 && sentImages === 0) {
-    console.error("Telegram notification sent without product photos; all photo attempts failed.");
+    console.error(
+      "All Telegram product image attempts failed."
+    );
   }
 }
 
