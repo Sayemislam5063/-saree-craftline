@@ -175,44 +175,88 @@ async function sendTelegramPhoto(
     });
     return;
   } catch (urlError) {
-    // If Telegram cannot fetch the image URL itself, upload the image from our server.
-    const imageResponse = await fetch(imageUrl, {
-      redirect: "follow",
+    console.error("Telegram photo URL failed; trying server upload:", urlError);
+  }
+
+  const imageResponse = await fetch(imageUrl, {
+    redirect: "follow",
+    cache: "no-store",
+  });
+
+  if (!imageResponse.ok) {
+    throw new Error(`Image URL fetch failed: ${imageResponse.status}`);
+  }
+
+  const imageBlob = await imageResponse.blob();
+  if (!imageBlob.size) {
+    throw new Error("Downloaded product image is empty.");
+  }
+
+  const form = new FormData();
+  form.append("chat_id", chatId);
+  form.append("photo", imageBlob, "product-image.jpg");
+
+  const uploadResponse = await fetch(
+    `https://api.telegram.org/bot${token}/sendPhoto`,
+    {
+      method: "POST",
+      body: form,
       cache: "no-store",
-    });
-
-    if (!imageResponse.ok) {
-      throw new Error(
-        `Image URL fetch failed (${imageResponse.status}); Telegram URL error: ${
-          urlError instanceof Error ? urlError.message : String(urlError)
-        }`
-      );
     }
+  );
 
+  const uploadText = await uploadResponse.text();
+  let uploadResult: any = null;
+
+  try {
+    uploadResult = JSON.parse(uploadText);
+  } catch {
+    // Keep raw response for diagnostics.
+  }
+
+  if (!uploadResponse.ok || uploadResult?.ok !== true) {
+    throw new Error(
+      uploadResult?.description ||
+        `Telegram photo upload failed (${uploadResponse.status}): ${uploadText.slice(0, 300)}`
+    );
+  }
+}
+
+/**
+ * Sends product photos as Telegram media albums.
+ * Telegram accepts 2-10 media items in each sendMediaGroup request.
+ * A single image is sent with sendPhoto because Telegram does not create
+ * a media album containing only one item.
+ */
 async function sendTelegramAlbum(
   token: string,
   chatId: string,
   imageUrls: string[]
 ): Promise<number> {
-  const uniqueImages = [...new Set(imageUrls.filter(isHttpUrl))];
+  const uniqueImages = [
+    ...new Set(
+      imageUrls
+        .filter(isHttpUrl)
+        .map((url) => url.trim())
+    ),
+  ];
+
   let sentCount = 0;
 
-  // Telegram একটি Album-এ সর্বোচ্চ ১০টি ছবি নেয়।
   for (let start = 0; start < uniqueImages.length; start += 10) {
     const group = uniqueImages.slice(start, start + 10);
 
-    // একটি ছবি থাকলে sendPhoto ব্যবহার হবে।
     if (group.length === 1) {
       try {
         await sendTelegramPhoto(token, chatId, group[0]);
-        sentCount++;
+        sentCount += 1;
       } catch (error) {
-        console.error("Telegram single photo failed:", error);
+        console.error("Telegram single product photo failed:", error);
       }
       continue;
     }
 
-    // প্রথমে URL দিয়ে Album পাঠানোর চেষ্টা।
+    // First attempt: let Telegram fetch the public image URLs and group them.
     try {
       await telegramApi(token, "sendMediaGroup", {
         chat_id: chatId,
@@ -223,52 +267,52 @@ async function sendTelegramAlbum(
       });
 
       sentCount += group.length;
+      console.log(`Telegram album sent: ${group.length} images (URL mode).`);
       continue;
-    } catch (error) {
+    } catch (urlAlbumError) {
       console.error(
-        "Telegram URL album failed; trying file upload:",
-        error
+        "Telegram URL album failed; retrying with uploaded image files:",
+        urlAlbumError
       );
     }
 
-    // URL দিয়ে না হলে ছবিগুলো Server থেকে Upload করবে।
+    // Second attempt: download the images on the server and upload them
+    // together as one multipart sendMediaGroup request.
     try {
       const form = new FormData();
       form.append("chat_id", chatId);
 
       const media: Array<{ type: "photo"; media: string }> = [];
 
-      for (let i = 0; i < group.length; i++) {
-        const imageResponse = await fetch(group[i], {
+      for (let index = 0; index < group.length; index += 1) {
+        const imageUrl = group[index];
+        const imageResponse = await fetch(imageUrl, {
           redirect: "follow",
           cache: "no-store",
         });
 
         if (!imageResponse.ok) {
           throw new Error(
-            `Image download failed: ${imageResponse.status}`
+            `Product image ${index + 1} download failed: ${imageResponse.status}`
           );
         }
 
         const blob = await imageResponse.blob();
-
         if (!blob.size) {
-          throw new Error("Downloaded image is empty.");
+          throw new Error(`Product image ${index + 1} is empty.`);
         }
 
-        const fieldName = `photo${i}`;
-        const extension = blob.type.includes("png")
+        const contentType = blob.type.toLowerCase();
+        const extension = contentType.includes("png")
           ? "png"
-          : blob.type.includes("webp")
+          : contentType.includes("webp")
             ? "webp"
-            : "jpg";
+            : contentType.includes("gif")
+              ? "gif"
+              : "jpg";
+        const fieldName = `photo${index}`;
 
-        form.append(
-          fieldName,
-          blob,
-          `${fieldName}.${extension}`
-        );
-
+        form.append(fieldName, blob, `${fieldName}.${extension}`);
         media.push({
           type: "photo",
           media: `attach://${fieldName}`,
@@ -277,7 +321,7 @@ async function sendTelegramAlbum(
 
       form.append("media", JSON.stringify(media));
 
-      const response = await fetch(
+      const uploadResponse = await fetch(
         `https://api.telegram.org/bot${token}/sendMediaGroup`,
         {
           method: "POST",
@@ -286,147 +330,41 @@ async function sendTelegramAlbum(
         }
       );
 
-      const responseText = await response.text();
-      let result: any = null;
+      const uploadText = await uploadResponse.text();
+      let uploadResult: any = null;
 
       try {
-        result = JSON.parse(responseText);
+        uploadResult = JSON.parse(uploadText);
       } catch {
-        // Raw response নিচে ব্যবহার হবে।
+        // Keep raw response for diagnostics.
       }
 
-      if (!response.ok || result?.ok !== true) {
+      if (!uploadResponse.ok || uploadResult?.ok !== true) {
         throw new Error(
-          result?.description ||
-            `Album upload failed: ${responseText.slice(0, 300)}`
+          uploadResult?.description ||
+            `Telegram uploaded album failed (${uploadResponse.status}): ${uploadText.slice(0, 400)}`
         );
       }
 
       sentCount += group.length;
-    } catch (uploadError) {
-      console.error(
-        "Telegram album upload failed; trying individual photos:",
-        uploadError
-      );
-
-      // Album সম্ভব না হলে ছবিগুলো হারিয়ে না যাওয়ার fallback।
-      for (const url of group) {
-        try {
-          await sendTelegramPhoto(token, chatId, url);
-          sentCount++;
-        } catch (photoError) {
-          console.error("Telegram photo failed:", photoError);
-        }
-      }
+      console.log(`Telegram album sent: ${group.length} images (upload mode).`);
+    } catch (uploadAlbumError) {
+      // Do not silently split an album into separate messages. The user asked
+      // for grouped images; log the real failure and keep the order text intact.
+      console.error("Telegram product album could not be sent:", uploadAlbumError);
     }
   }
 
   return sentCount;
 }
 
-    const imageBlob = await imageResponse.blob();
-    const filename =
-      imageUrl.split("?")[0].split("/").pop() || "product-image.jpg";
-
-    const form = new FormData();
-    form.append("chat_id", chatId);
-    form.append("photo", imageBlob, filename);
-
-    const uploadResponse = await fetch(
-      `https://api.telegram.org/bot${token}/sendPhoto`,
-      {
-        method: "POST",
-        body: form,
-        cache: "no-store",
-      }
-    );
-
-    const uploadText = await uploadResponse.text();
-    let uploadResult: any = null;
-
-    try {
-      uploadResult = JSON.parse(uploadText);
-    } catch {
-      // Keep raw response for diagnostics.
-    }
-
-    if (!uploadResponse.ok || uploadResult?.ok !== true) {
-      throw new Error(
-        uploadResult?.description ||
-          `Telegram photo upload failed (${uploadResponse.status}): ${uploadText.slice(0, 300)}`
-      );
-    }
-  }
-}
-
-
-async function sendTelegramAlbum(
-  token: string,
-  chatId: string,
-  imageUrls: string[]
-): Promise<number> {
-  const uniqueImages = [
-    ...new Set(imageUrls.filter(isHttpUrl)),
-  ];
-
-  let sentCount = 0;
-
-  // প্রতি Album-এ সর্বোচ্চ ১০টি ছবি
-  for (let start = 0; start < uniqueImages.length; start += 10) {
-    const group = uniqueImages.slice(start, start + 10);
-
-    if (group.length === 1) {
-      try {
-        await sendTelegramPhoto(token, chatId, group[0]);
-        sentCount++;
-      } catch (error) {
-        console.error("Telegram photo failed:", error);
-      }
-      continue;
-    }
-
-    try {
-      await telegramApi(token, "sendMediaGroup", {
-        chat_id: chatId,
-        media: group.map((url) => ({
-          type: "photo",
-          media: url,
-        })),
-      });
-
-      sentCount += group.length;
-    } catch (error) {
-      console.error(
-        "Telegram album failed, trying individual photos:",
-        error
-      );
-
-      // Album ব্যর্থ হলে ছবিগুলো আলাদাভাবে পাঠাবে
-      for (const url of group) {
-        try {
-          await sendTelegramPhoto(token, chatId, url);
-          sentCount++;
-        } catch (photoError) {
-          console.error("Photo send failed:", photoError);
-        }
-      }
-    }
-  }
-
-  return sentCount;
-}
-
-
-async function sendTelegramNotify(
-  message: string,
-  images: string[] = []
-) {
+async function sendTelegramNotify(message: string, images: string[] = []) {
   const token = process.env.TELEGRAM_BOT2_TOKEN?.trim();
   const chatId = process.env.TELEGRAM_NOTIFY_CHAT_ID?.trim();
 
   if (!token || !chatId) {
     console.error(
-      "Telegram notification skipped: missing token or chat ID."
+      "Telegram notification skipped: bot token or notify chat ID is missing."
     );
     return;
   }
@@ -434,22 +372,20 @@ async function sendTelegramNotify(
   const validImages = [
     ...new Set(
       images
-        .map((image) => image.trim())
         .filter(isHttpUrl)
+        .map((image) => image.trim())
     ),
   ];
 
-  let sentImages = 0;
-
   if (validImages.length > 0) {
-    sentImages = await sendTelegramAlbum(
-      token,
-      chatId,
-      validImages
-    );
+    const sentImages = await sendTelegramAlbum(token, chatId, validImages);
+    if (sentImages === 0) {
+      console.error("No product images were delivered to the Telegram alert group.");
+    }
   }
 
-  // পূর্ণ Order Details আলাদা Message হিসেবে যাবে।
+  // Send the complete order text separately, after the album.
+  // This avoids Telegram's photo-caption length limit.
   try {
     await telegramApi(token, "sendMessage", {
       chat_id: chatId,
@@ -458,16 +394,7 @@ async function sendTelegramNotify(
       disable_web_page_preview: true,
     });
   } catch (error) {
-    console.error(
-      "Telegram order message send failed:",
-      error
-    );
-  }
-
-  if (validImages.length > 0 && sentImages === 0) {
-    console.error(
-      "All Telegram product image attempts failed."
-    );
+    console.error("Telegram order details message failed:", error);
   }
 }
 
@@ -694,8 +621,8 @@ export async function POST(request: Request) {
       purchase_cost: costTotal,
     };
 
-    // Google Sheets sync runs in the background. It must never delay the
-    // customer's order confirmation after Supabase has saved the order.
+    // Google Sheets runs in the background. Supabase is the primary order store,
+    // so the customer and courier flow must not wait for Google Sheets.
     waitUntil(
       saveOrderToGoogleSheet(sheetPayload)
         .then((sheetResult) => {
