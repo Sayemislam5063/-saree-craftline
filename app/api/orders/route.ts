@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import { supabaseAdmin } from "../../../lib/supabase/server";
-import { checkSteadfastFraud, createSteadfastBooking } from "../../../lib/steadfast/client";
+import {
+  checkSteadfastFraud,
+  createSteadfastBooking,
+} from "../../../lib/steadfast/client";
 
 export const runtime = "nodejs";
 
@@ -21,6 +24,8 @@ type OrderRequest = {
   delivery_type: "insideDhaka" | "outsideDhaka";
   items: OrderItemInput[];
 };
+
+type FraudReport = Awaited<ReturnType<typeof checkSteadfastFraud>>;
 
 const GOOGLE_SHEET_URL =
   "https://script.google.com/macros/s/AKfycbxFH2iBwJ1mdPazSOo6S67kiN22Ib6OLnzlQ6R3DsAS5h4hk-D6O_lpQHlE_kHGtPbchg/exec";
@@ -65,7 +70,6 @@ function getProductImageUrl(product: any): string {
       typeof image === "object" &&
       (image.isThumbnail === true || image.is_thumbnail === true)
   );
-
   const thumbnailIndex = Number(product?.thumbnail_index);
   const selected =
     thumbnail ??
@@ -91,11 +95,292 @@ function getProductImageUrl(product: any): string {
           candidate?.secure_url ??
           candidate?.imageUrl ??
           candidate?.image_url;
-
     if (isHttpUrl(url)) return url.trim();
   }
 
   return "";
+}
+
+function formatMoney(value: unknown): string {
+  const amount = Number(value ?? 0);
+  return `৳${(Number.isFinite(amount) ? amount : 0).toLocaleString("en-BD")}`;
+}
+
+function formatDhakaDateTime(value: unknown): string {
+  const date = new Date(String(value ?? ""));
+  if (Number.isNaN(date.getTime())) return "তারিখ পাওয়া যায়নি";
+  return date.toLocaleString("en-GB", {
+    timeZone: "Asia/Dhaka",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function getDhakaDayKey(value: unknown): string {
+  const date = new Date(String(value ?? ""));
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return date.toLocaleDateString("en-CA", { timeZone: "Asia/Dhaka" });
+}
+
+function getDhakaDayLabel(value: unknown): string {
+  const date = new Date(String(value ?? ""));
+  if (Number.isNaN(date.getTime())) return "অজানা তারিখ";
+  return date.toLocaleDateString("en-GB", {
+    timeZone: "Asia/Dhaka",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function buildOrderHistoryText(
+  orders: any[],
+  totalOrderCount: number
+): string {
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  if (safeOrders.length === 0) {
+    return `\n⚠️ <b>CUSTOMER ORDER HISTORY</b>\nএই নম্বরে আগের কোনো অর্ডার পাওয়া যায়নি।\n`;
+  }
+
+  const dateCounts = new Map<string, number>();
+  for (const order of safeOrders) {
+    const key = getDhakaDayKey(order.created_at);
+    dateCounts.set(key, (dateCounts.get(key) ?? 0) + 1);
+  }
+
+  const latestFive = safeOrders.slice(0, 5);
+  const grouped = new Map<string, any[]>();
+  for (const order of latestFive) {
+    const key = getDhakaDayKey(order.created_at);
+    const group = grouped.get(key) ?? [];
+    group.push(order);
+    grouped.set(key, group);
+  }
+
+  let result =
+    `\n⚠️ <b>এই নম্বরে অর্ডার হিস্ট্রি</b>\n` +
+    `📞 <b>মোট অর্ডার:</b> ${totalOrderCount}\n` +
+    `🕘 <b>সর্বশেষ ${latestFive.length}টি অর্ডার:</b>\n`;
+
+  let index = 1;
+  for (const [dayKey, dayOrders] of grouped) {
+    const dayCount = dateCounts.get(dayKey) ?? dayOrders.length;
+    result += `\n📅 <b>${getDhakaDayLabel(dayOrders[0].created_at)} — ${dayCount}টি অর্ডার</b>\n`;
+
+    for (const order of dayOrders) {
+      const status =
+        order.steadfast_delivery_status ||
+        order.steadfast_booking_status ||
+        "PENDING";
+      result +=
+        `${index}️⃣ ${formatDhakaDateTime(order.created_at)} | ` +
+        `💰 ${formatMoney(order.total)} | 📦 ${escapeHtml(String(status).toUpperCase())}\n`;
+      index += 1;
+    }
+  }
+
+  return result;
+}
+
+function getFraudPercent(
+  ratio: number | null,
+  count: number | null,
+  total: number | null
+): string {
+  if (ratio !== null && Number.isFinite(ratio)) return `${ratio}%`;
+  if (total && total > 0 && count !== null) {
+    return `${Math.round((count / total) * 100)}%`;
+  }
+  return "তথ্য নেই";
+}
+
+function buildFraudReportText(fraud: FraudReport | null): string {
+  if (!fraud) {
+    return `\n📊 <b>STEADFAST FRAUD REPORT</b>\nFraud report পাওয়া যায়নি। পরে আবার চেষ্টা করুন।\n`;
+  }
+
+  return (
+    `\n📊 <b>STEADFAST FRAUD REPORT</b>\n` +
+    `✅ <b>Delivered Rate:</b> ${getFraudPercent(
+      fraud.deliveryRatio,
+      fraud.totalDelivered,
+      fraud.totalParcels
+    )}\n` +
+    `❌ <b>Cancelled Rate:</b> ${getFraudPercent(
+      fraud.cancellationRatio,
+      fraud.totalCancelled,
+      fraud.totalParcels
+    )}\n` +
+    `📦 <b>Total Parcels:</b> ${fraud.totalParcels ?? "তথ্য নেই"}\n` +
+    `✅ <b>Delivered:</b> ${fraud.totalDelivered ?? "তথ্য নেই"}\n` +
+    `❌ <b>Cancelled:</b> ${fraud.totalCancelled ?? "তথ্য নেই"}\n` +
+    `🛡️ <b>Fraud Reports:</b> ${fraud.totalFraudReports ?? 0}\n` +
+    `⚠️ <b>Fraud Level:</b> ${escapeHtml(fraud.level ?? "তথ্য নেই")}\n`
+  );
+}
+
+function buildProductDetailsText(items: any[]): {
+  text: string;
+  productTypeCount: number;
+  totalPieces: number;
+  calculatedSubtotal: number;
+} {
+  const safeItems = Array.isArray(items) ? items : [];
+  const productKeys = new Set<string>();
+  let totalPieces = 0;
+  let calculatedSubtotal = 0;
+  let text = `\n🛍️ <b>ORDER PRODUCT DETAILS</b>\n`;
+
+  if (safeItems.length === 0) {
+    text += `কোনো পণ্যের বিস্তারিত পাওয়া যায়নি।\n`;
+  }
+
+  safeItems.forEach((item, index) => {
+    const productName = String(
+      item.productName ?? item.name ?? item.title ?? "Product"
+    );
+    const productCode = String(
+      item.productCode ?? item.product_code ?? "CODE-N/A"
+    );
+    const productId = String(item.productId ?? item.product_id ?? productCode);
+    const imageUrl = item.imageUrl ?? item.image_url ?? "";
+    const quantityValue = Number(item.quantity ?? 1);
+    const quantity = Number.isFinite(quantityValue) && quantityValue > 0 ? quantityValue : 1;
+    const unitPriceValue = Number(item.unitPrice ?? item.unit_price ?? item.price ?? 0);
+    const unitPrice = Number.isFinite(unitPriceValue) ? unitPriceValue : 0;
+    const lineTotalValue = Number(item.totalPrice ?? item.total_price ?? unitPrice * quantity);
+    const lineTotal = Number.isFinite(lineTotalValue) ? lineTotalValue : unitPrice * quantity;
+
+    productKeys.add(productId);
+    totalPieces += quantity;
+    calculatedSubtotal += lineTotal;
+
+    const codeLabel = isHttpUrl(imageUrl)
+      ? `<a href="${escapeHtml(imageUrl)}">${escapeHtml(productCode)}</a>`
+      : `<code>${escapeHtml(productCode)}</code>`;
+    const blouseLabel =
+      item.blouseOption === "withBlouse"
+        ? " | Blouse সহ"
+        : item.blouseOption === "withoutBlouse"
+          ? " | Blouse ছাড়া"
+          : "";
+
+    text +=
+      `${index + 1}. ${codeLabel} — <b>${escapeHtml(productName)}</b>\n` +
+      `   📦 Quantity: <b>${quantity} pcs</b>${blouseLabel}\n` +
+      `   💵 Unit Price: ${formatMoney(unitPrice)}\n` +
+      `   🧾 Product Total: <b>${formatMoney(lineTotal)}</b>\n`;
+  });
+
+  return {
+    text,
+    productTypeCount: productKeys.size,
+    totalPieces,
+    calculatedSubtotal,
+  };
+}
+
+function buildOrderNotification(input: {
+  heading: string;
+  orderNumber: string;
+  orderDate: string;
+  bookingStatus: string;
+  customerName: string;
+  phone: string;
+  address: string;
+  items: any[];
+  subtotal: number;
+  deliveryCharge: number;
+  total: number;
+  historyOrders: any[];
+  historyCount: number;
+  fraudReport: FraudReport | null;
+  consignmentId?: string | null;
+  trackingCode?: string | null;
+}): string {
+  const productDetails = buildProductDetailsText(input.items);
+  const subtotal = Number.isFinite(input.subtotal)
+    ? input.subtotal
+    : productDetails.calculatedSubtotal;
+
+  let message =
+    `🛒 <b>${escapeHtml(input.heading)}</b> 🛒\n` +
+    `━━━━━━━━━━━━━━━━━━━\n` +
+    `📅 <b>Date:</b> ${escapeHtml(input.orderDate)}\n` +
+    `🧾 <b>Order ID:</b> <code>${escapeHtml(input.orderNumber)}</code>\n` +
+    `📦 <b>Status:</b> <b>${escapeHtml(input.bookingStatus)}</b>\n\n` +
+    `👤 <b>Customer:</b> ${escapeHtml(input.customerName)}\n` +
+    `📞 <b>Phone:</b> <code>${escapeHtml(input.phone)}</code>\n` +
+    `📍 <b>Address:</b> ${escapeHtml(input.address)}\n`;
+
+  message += productDetails.text;
+  message +=
+    `\n📊 <b>ORDER SUMMARY</b>\n` +
+    `🛍️ <b>Product Types:</b> ${productDetails.productTypeCount}\n` +
+    `📦 <b>Total Pieces:</b> ${productDetails.totalPieces}\n` +
+    `💰 <b>Product Subtotal:</b> ${formatMoney(subtotal)}\n` +
+    `🚚 <b>Delivery Charge:</b> ${formatMoney(input.deliveryCharge)}\n` +
+    `💳 <b>TOTAL BILL:</b> <b>${formatMoney(input.total)}</b>\n`;
+
+  message += buildOrderHistoryText(input.historyOrders, input.historyCount);
+  message += buildFraudReportText(input.fraudReport);
+
+  message +=
+    `\n📦 <b>COURIER INFORMATION</b>\n` +
+    `🆔 <b>Consignment ID:</b> <code>${escapeHtml(input.consignmentId || "N/A")}</code>\n` +
+    `🚚 <b>Tracking:</b> ${
+      input.trackingCode
+        ? `<a href="https://steadfast.com.bd/t/${encodeURIComponent(input.trackingCode)}">${escapeHtml(input.trackingCode)}</a>`
+        : "N/A"
+    }`;
+
+  return message;
+}
+
+function normalizePhoneForSearch(phone: string): string {
+  let digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("880") && digits.length === 13) {
+    digits = `0${digits.slice(3)}`;
+  } else if (digits.length === 10 && digits.startsWith("1")) {
+    digits = `0${digits}`;
+  }
+  return digits;
+}
+
+async function getCustomerOrderHistory(phone: string) {
+  const normalizedPhone = normalizePhoneForSearch(phone);
+  const suffix = normalizedPhone.slice(-10);
+  if (suffix.length < 10) {
+    return { orders: [] as any[], totalCount: 0 };
+  }
+
+  const { data, count, error } = await supabaseAdmin
+    .from("orders")
+    .select(
+      "id, order_number, created_at, total, steadfast_delivery_status, steadfast_booking_status, phone",
+      { count: "exact" }
+    )
+    .ilike("phone", `%${suffix}%`)
+    .order("created_at", { ascending: false })
+    .limit(1000);
+
+  if (error) {
+    console.error("Customer order history lookup failed:", error);
+    return { orders: [] as any[], totalCount: 0 };
+  }
+
+  const matchingOrders = (data ?? []).filter(
+    (order: any) => normalizePhoneForSearch(String(order.phone ?? "")).slice(-10) === suffix
+  );
+
+  return {
+    orders: matchingOrders,
+    totalCount: Math.max(matchingOrders.length, count ?? 0),
+  };
 }
 
 async function saveOrderToGoogleSheet(payload: Record<string, unknown>) {
@@ -109,7 +394,6 @@ async function saveOrderToGoogleSheet(payload: Record<string, unknown>) {
 
   const responseText = await response.text();
   let result: any = null;
-
   try {
     result = JSON.parse(responseText);
   } catch {
@@ -117,18 +401,14 @@ async function saveOrderToGoogleSheet(payload: Record<string, unknown>) {
   }
 
   if (!response.ok) {
-    throw new Error(
-      `Google Sheet HTTP ${response.status}: ${responseText.slice(0, 400)}`
-    );
+    throw new Error(`Google Sheet HTTP ${response.status}: ${responseText.slice(0, 400)}`);
   }
-
   if (result?.success !== true) {
     throw new Error(
       result?.message ||
         `Google Sheet returned an unexpected response: ${responseText.slice(0, 400)}`
     );
   }
-
   return result;
 }
 
@@ -146,11 +426,10 @@ async function telegramApi(
 
   const responseText = await response.text();
   let result: any = null;
-
   try {
     result = JSON.parse(responseText);
   } catch {
-    // Keep the raw response in the error below.
+    // Keep raw response for diagnostics.
   }
 
   if (!response.ok || result?.ok !== true) {
@@ -159,233 +438,18 @@ async function telegramApi(
         `Telegram ${method} failed (${response.status}): ${responseText.slice(0, 300)}`
     );
   }
-
   return result;
 }
 
-async function sendTelegramPhoto(
-  token: string,
-  chatId: string,
-  imageUrl: string
-) {
-  try {
-    await telegramApi(token, "sendPhoto", {
-      chat_id: chatId,
-      photo: imageUrl,
-    });
-    return;
-  } catch (urlError) {
-    console.error("Telegram photo URL failed; trying server upload:", urlError);
-  }
-
-  const imageResponse = await fetch(imageUrl, {
-    redirect: "follow",
-    cache: "no-store",
-  });
-
-  if (!imageResponse.ok) {
-    throw new Error(`Image URL fetch failed: ${imageResponse.status}`);
-  }
-
-  const imageBlob = await imageResponse.blob();
-  if (!imageBlob.size) {
-    throw new Error("Downloaded product image is empty.");
-  }
-
-  const form = new FormData();
-  form.append("chat_id", chatId);
-  form.append("photo", imageBlob, "product-image.jpg");
-
-  const uploadResponse = await fetch(
-    `https://api.telegram.org/bot${token}/sendPhoto`,
-    {
-      method: "POST",
-      body: form,
-      cache: "no-store",
-    }
-  );
-
-  const uploadText = await uploadResponse.text();
-  let uploadResult: any = null;
-
-  try {
-    uploadResult = JSON.parse(uploadText);
-  } catch {
-    // Keep raw response for diagnostics.
-  }
-
-  if (!uploadResponse.ok || uploadResult?.ok !== true) {
-    throw new Error(
-      uploadResult?.description ||
-        `Telegram photo upload failed (${uploadResponse.status}): ${uploadText.slice(0, 300)}`
-    );
-  }
-}
-
-/**
- * Sends product photos as Telegram media albums.
- * Telegram accepts 2-10 media items in each sendMediaGroup request.
- * A single image is sent with sendPhoto because Telegram does not create
- * a media album containing only one item.
- */
-async function sendTelegramAlbum(
-  token: string,
-  chatId: string,
-  imageUrls: string[]
-): Promise<number> {
-  const uniqueImages = [
-    ...new Set(
-      imageUrls
-        .filter(isHttpUrl)
-        .map((url) => url.trim())
-    ),
-  ];
-
-  let sentCount = 0;
-
-  for (let start = 0; start < uniqueImages.length; start += 10) {
-    const group = uniqueImages.slice(start, start + 10);
-
-    if (group.length === 1) {
-      try {
-        await sendTelegramPhoto(token, chatId, group[0]);
-        sentCount += 1;
-      } catch (error) {
-        console.error("Telegram single product photo failed:", error);
-      }
-      continue;
-    }
-
-    // First attempt: let Telegram fetch the public image URLs and group them.
-    try {
-      await telegramApi(token, "sendMediaGroup", {
-        chat_id: chatId,
-        media: group.map((url) => ({
-          type: "photo",
-          media: url,
-        })),
-      });
-
-      sentCount += group.length;
-      console.log(`Telegram album sent: ${group.length} images (URL mode).`);
-      continue;
-    } catch (urlAlbumError) {
-      console.error(
-        "Telegram URL album failed; retrying with uploaded image files:",
-        urlAlbumError
-      );
-    }
-
-    // Second attempt: download the images on the server and upload them
-    // together as one multipart sendMediaGroup request.
-    try {
-      const form = new FormData();
-      form.append("chat_id", chatId);
-
-      const media: Array<{ type: "photo"; media: string }> = [];
-
-      for (let index = 0; index < group.length; index += 1) {
-        const imageUrl = group[index];
-        const imageResponse = await fetch(imageUrl, {
-          redirect: "follow",
-          cache: "no-store",
-        });
-
-        if (!imageResponse.ok) {
-          throw new Error(
-            `Product image ${index + 1} download failed: ${imageResponse.status}`
-          );
-        }
-
-        const blob = await imageResponse.blob();
-        if (!blob.size) {
-          throw new Error(`Product image ${index + 1} is empty.`);
-        }
-
-        const contentType = blob.type.toLowerCase();
-        const extension = contentType.includes("png")
-          ? "png"
-          : contentType.includes("webp")
-            ? "webp"
-            : contentType.includes("gif")
-              ? "gif"
-              : "jpg";
-        const fieldName = `photo${index}`;
-
-        form.append(fieldName, blob, `${fieldName}.${extension}`);
-        media.push({
-          type: "photo",
-          media: `attach://${fieldName}`,
-        });
-      }
-
-      form.append("media", JSON.stringify(media));
-
-      const uploadResponse = await fetch(
-        `https://api.telegram.org/bot${token}/sendMediaGroup`,
-        {
-          method: "POST",
-          body: form,
-          cache: "no-store",
-        }
-      );
-
-      const uploadText = await uploadResponse.text();
-      let uploadResult: any = null;
-
-      try {
-        uploadResult = JSON.parse(uploadText);
-      } catch {
-        // Keep raw response for diagnostics.
-      }
-
-      if (!uploadResponse.ok || uploadResult?.ok !== true) {
-        throw new Error(
-          uploadResult?.description ||
-            `Telegram uploaded album failed (${uploadResponse.status}): ${uploadText.slice(0, 400)}`
-        );
-      }
-
-      sentCount += group.length;
-      console.log(`Telegram album sent: ${group.length} images (upload mode).`);
-    } catch (uploadAlbumError) {
-      // Do not silently split an album into separate messages. The user asked
-      // for grouped images; log the real failure and keep the order text intact.
-      console.error("Telegram product album could not be sent:", uploadAlbumError);
-    }
-  }
-
-  return sentCount;
-}
-
-async function sendTelegramNotify(message: string, images: string[] = []) {
+async function sendTelegramNotify(message: string) {
   const token = process.env.TELEGRAM_BOT2_TOKEN?.trim();
   const chatId = process.env.TELEGRAM_NOTIFY_CHAT_ID?.trim();
-
   if (!token || !chatId) {
-    console.error(
-      "Telegram notification skipped: bot token or notify chat ID is missing."
-    );
+    console.error("Telegram alert skipped: bot token or chat ID is missing.");
     return;
   }
 
-  const validImages = [
-    ...new Set(
-      images
-        .filter(isHttpUrl)
-        .map((image) => image.trim())
-    ),
-  ];
-
-  if (validImages.length > 0) {
-    const sentImages = await sendTelegramAlbum(token, chatId, validImages);
-    if (sentImages === 0) {
-      console.error("No product images were delivered to the Telegram alert group.");
-    }
-  }
-
-  // Send the complete order text separately, after the album.
-  // This avoids Telegram's photo-caption length limit.
+  // Alert group receives text only. Product codes in the message link to images.
   try {
     await telegramApi(token, "sendMessage", {
       chat_id: chatId,
@@ -428,7 +492,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const cleanPhone = String(body.phone).replace(/[\s-]/g, "");
+    const cleanPhone = normalizePhoneForSearch(String(body.phone));
     if (!/^01[3-9]\d{8}$/.test(cleanPhone)) {
       return NextResponse.json(
         { success: false, message: "আপনার নাম্বার টি সঠিক নয়।" },
@@ -445,9 +509,9 @@ export async function POST(request: Request) {
       }
     }
 
-    let fraudCheckResult;
+    let fraudCheckResult: FraudReport;
     try {
-      fraudCheckResult = await checkSteadfastFraud(body.phone);
+      fraudCheckResult = await checkSteadfastFraud(cleanPhone);
     } catch (fraudError) {
       console.error("Steadfast fraud check failed:", fraudError);
       return NextResponse.json(
@@ -457,9 +521,6 @@ export async function POST(request: Request) {
     }
 
     const productIds = [...new Set(body.items.map((item) => item.productId))];
-
-    // Select all product columns. This is also the query used by the working
-    // Telegram manual-order flow, and includes the JSON images column.
     const { data: products, error: productsError } = await supabaseAdmin
       .from("products")
       .select("*")
@@ -478,21 +539,21 @@ export async function POST(request: Request) {
     );
 
     const orderItems = body.items.map((item) => {
-      const product = productMap.get(item.productId);
+      const product = productMap.get(String(item.productId));
       if (!product) throw new Error("Product not found");
-
-      if (item.quantity > product.stock_quantity) {
+      if (item.quantity > Number(product.stock_quantity)) {
         throw new Error(`${product.name} এর stock নেই।`);
       }
 
-      const unitPrice = getSellingPrice(product, item.blouseOption);
-      const costPrice =
-        product.cost_price === null ? 0 : Number(product.cost_price);
+      const unitPrice = Number(getSellingPrice(product, item.blouseOption));
+      const costPrice = product.cost_price === null ? 0 : Number(product.cost_price);
       const imageUrl = getProductImageUrl(product);
 
       return {
         productId: product.id,
         productName: product.name,
+        name: product.name,
+        productCode: product.product_code ?? "",
         imageUrl,
         quantity: item.quantity,
         blouseOption: item.blouseOption,
@@ -514,10 +575,7 @@ export async function POST(request: Request) {
         ? 110
         : 130;
     const total = subtotal + deliveryCharge;
-    const orderNumber = `SC-${crypto.randomUUID()
-      .replace(/-/g, "")
-      .slice(0, 10)
-      .toUpperCase()}`;
+    const orderNumber = `SC-${crypto.randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase()}`;
 
     const { data: createdOrder, error: orderError } = await supabaseAdmin.rpc(
       "create_order_with_stock",
@@ -544,33 +602,6 @@ export async function POST(request: Request) {
         { success: false, message: "Order save করা যায়নি।" },
         { status: 400 }
       );
-    }
-
-    const { data: previousOrders } = await supabaseAdmin
-      .from("orders")
-      .select("order_number, created_at, total, steadfast_delivery_status")
-      .eq("phone", cleanPhone)
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    let historyMsg = "";
-    if (previousOrders && previousOrders.length > 0) {
-      historyMsg = `\n⚠️ <b>এই নাম্বারে আগের অর্ডারগুলো:</b>\n`;
-      previousOrders.forEach((order: any, index: number) => {
-        const date = new Date(order.created_at).toLocaleString("en-GB", {
-          timeZone: "Asia/Dhaka",
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        const status = order.steadfast_delivery_status
-          ? String(order.steadfast_delivery_status).toUpperCase()
-          : "PENDING";
-        historyMsg += `${index + 1}️⃣ ${date} | 💰 ${order.total}৳ | 📦 ${status}\n`;
-      });
-      historyMsg += `━━━━━━━━━━━━━━━━━━━\n`;
     }
 
     const fraudStatus = fraudCheckResult.isFraud
@@ -600,9 +631,7 @@ export async function POST(request: Request) {
       console.error("Fraud result database update failed:", fraudUpdateError);
     }
 
-    const createdOrderRow = Array.isArray(createdOrder)
-      ? createdOrder[0]
-      : createdOrder;
+    const createdOrderRow = Array.isArray(createdOrder) ? createdOrder[0] : createdOrder;
     const orderDate = createdOrderRow?.order_date ?? new Date().toISOString();
 
     const sheetPayload = {
@@ -621,8 +650,7 @@ export async function POST(request: Request) {
       purchase_cost: costTotal,
     };
 
-    // Google Sheets runs in the background. Supabase is the primary order store,
-    // so the customer and courier flow must not wait for Google Sheets.
+    // Google Sheets is a background copy; Supabase remains the primary order store.
     waitUntil(
       saveOrderToGoogleSheet(sheetPayload)
         .then((sheetResult) => {
@@ -671,8 +699,7 @@ export async function POST(request: Request) {
           steadfast_consignment_id: bookingResult.consignmentId,
           steadfast_tracking_code: bookingResult.trackingCode,
           steadfast_booking_status: "booked",
-          steadfast_booking_date:
-            bookingResult.bookedAt || new Date().toISOString(),
+          steadfast_booking_date: bookingResult.bookedAt || new Date().toISOString(),
           steadfast_delivery_status: bookingResult.status,
         })
         .eq("order_number", orderNumber);
@@ -680,7 +707,6 @@ export async function POST(request: Request) {
       if (bookingUpdateError) {
         console.error("Steadfast booking details database update failed:", bookingUpdateError);
       }
-
       bookingSuccess = true;
     } catch (bookingError) {
       console.error("Steadfast booking failed:", bookingError);
@@ -689,48 +715,39 @@ export async function POST(request: Request) {
         .update({
           steadfast_booking_status: "booking_error",
           steadfast_booking_error:
-            bookingError instanceof Error
-              ? bookingError.message
-              : "Unknown error",
+            bookingError instanceof Error ? bookingError.message : "Unknown error",
         })
         .eq("order_number", orderNumber);
     }
 
     if (bookingSuccess) {
-      const orderDateStr = new Date().toLocaleString("en-GB", {
-        timeZone: "Asia/Dhaka",
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
+      // Refresh after booking so the newest order shows its actual courier status in history.
+      const latestHistory = await getCustomerOrderHistory(cleanPhone);
+      const message = buildOrderNotification({
+        heading: "NEW WEBSITE ORDER",
+        orderNumber,
+        orderDate: formatDhakaDateTime(orderDate),
+        bookingStatus: "BOOKED ✅",
+        customerName: body.customer_name,
+        phone: cleanPhone,
+        address: `${body.address}, ${body.upazila}, ${body.district}`,
+        items: orderItems,
+        subtotal,
+        deliveryCharge,
+        total,
+        historyOrders: latestHistory.orders,
+        historyCount: latestHistory.totalCount,
+        fraudReport: fraudCheckResult,
+        consignmentId: bookingConsignmentId,
+        trackingCode: bookingTrackingCode,
       });
 
-      let message =
-        `🛒 <b>NEW WEBSITE ORDER</b> 🛒\n━━━━━━━━━━━━━━━━━━━\n` +
-        `📅 <b>তারিখ:</b> <b>${orderDateStr}</b>\n` +
-        `🧾 <b>Order ID:</b> <code>${escapeHtml(orderNumber)}</code>\n` +
-        `📦 <b>Status:</b> <b>BOOKED ✅</b>\n\n` +
-        `👤 <b>Customer:</b> ${escapeHtml(body.customer_name)}\n` +
-        `📞 <b>Phone:</b> <code>${escapeHtml(cleanPhone)}</code>\n` +
-        `📍 <b>Address:</b> ${escapeHtml(body.address)}, ${escapeHtml(body.upazila)}, ${escapeHtml(body.district)}\n\n` +
-        `💰 <b>Total Bill:</b> ৳${total}\n` +
-        `📊 <b>Google Sheet:</b> Background sync ⏳\n\n`;
-
-      message += historyMsg;
-      message +=
-        `\n🆔 <b>CONSIGNMENT ID</b> 🆔\n` +
-        `<pre>${escapeHtml(bookingConsignmentId)}</pre>\n` +
-        `🚚 <b>Tracking:</b> <a href="https://steadfast.com.bd/t/${encodeURIComponent(
-          bookingTrackingCode
-        )}">${escapeHtml(bookingTrackingCode)}</a>`;
-
-      const productImages = orderItems
-        .map((item) => item.imageUrl)
-        .filter((url) => url !== "");
-
-      await sendTelegramNotify(message, productImages);
+      // Telegram notification is also background work; it does not delay the buyer.
+      waitUntil(
+        sendTelegramNotify(message).catch((error) => {
+          console.error("Telegram website order notification failed:", orderNumber, error);
+        })
+      );
     }
 
     return NextResponse.json({
