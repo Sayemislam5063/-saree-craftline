@@ -24,6 +24,89 @@ export async function GET() {
   );
 }
 
+// Securely delete an order from the database. This does NOT cancel a parcel
+// already booked with Steadfast; the admin UI warns before this action.
+export async function DELETE(
+  request: Request,
+  context: RouteContext,
+) {
+  const verification = await verifyAdminRequest(request);
+
+  if (!verification.authorized) {
+    return verification.response;
+  }
+
+  const { id } = await context.params;
+
+  if (!id || id.length > 100) {
+    return NextResponse.json(
+      { success: false, message: "সঠিক Order ID দেওয়া হয়নি।" },
+      { status: 400 },
+    );
+  }
+
+  const { data: order, error: lookupError } = await supabaseAdmin
+    .from("orders")
+    .select("id, order_number, steadfast_booking_status, steadfast_tracking_code, steadfast_consignment_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (lookupError) {
+    console.error("Order delete lookup failed:", lookupError.message);
+    return NextResponse.json(
+      { success: false, message: "অর্ডারের তথ্য খুঁজে পাওয়া যায়নি।" },
+      { status: 500 },
+    );
+  }
+
+  if (!order) {
+    return NextResponse.json(
+      { success: false, message: "অর্ডারটি আগে থেকেই ডিলিট করা হয়েছে বা পাওয়া যায়নি।" },
+      { status: 404 },
+    );
+  }
+
+  // Avoid deleting while a booking API request is actively processing.
+  if (order.steadfast_booking_status === "booking") {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Steadfast booking এখন processing অবস্থায় আছে। Booking শেষ হওয়ার পর আবার চেষ্টা করো।",
+      },
+      { status: 409 },
+    );
+  }
+
+  const { data: deletedOrder, error: deleteError } = await supabaseAdmin
+    .from("orders")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (deleteError) {
+    console.error("Order delete failed:", deleteError.message);
+    return NextResponse.json(
+      { success: false, message: "ডাটাবেস থেকে অর্ডার ডিলিট করা যায়নি।" },
+      { status: 500 },
+    );
+  }
+
+  if (!deletedOrder) {
+    return NextResponse.json(
+      { success: false, message: "অর্ডারটি পাওয়া যায়নি অথবা আগেই ডিলিট হয়েছে।" },
+      { status: 404 },
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    message: "অর্ডারটি database থেকে ডিলিট হয়েছে।",
+    order_number: order.order_number,
+    courier_booking_cancelled: false,
+  });
+}
+
 // Book one order with Steadfast.
 // This function runs only when an authorized admin requests it.
 export async function POST(
@@ -46,7 +129,6 @@ export async function POST(
 
   if (orderError) {
     console.error("Order lookup failed:", orderError.message);
-
     return NextResponse.json(
       { success: false, message: "অর্ডারের তথ্য পাওয়া যায়নি।" },
       { status: 500 },
@@ -73,9 +155,7 @@ export async function POST(
     );
   }
 
-  // Check the customer's phone again immediately before booking.
   let fraudCheck;
-
   try {
     fraudCheck = await checkSteadfastFraud(order.phone);
   } catch (error) {
@@ -83,12 +163,10 @@ export async function POST(
       "Pre-booking fraud check failed:",
       error instanceof Error ? error.message : "Unknown error",
     );
-
     return NextResponse.json(
       {
         success: false,
-        message:
-          "Booking-এর আগে fraud check করা যায়নি। পরে আবার চেষ্টা করুন।",
+        message: "Booking-এর আগে fraud check করা যায়নি। পরে আবার চেষ্টা করুন।",
       },
       { status: 503 },
     );
@@ -112,16 +190,9 @@ export async function POST(
     .eq("id", id);
 
   if (fraudSaveError) {
-    console.error(
-      "Could not save the latest fraud check:",
-      fraudSaveError.message,
-    );
-
+    console.error("Could not save the latest fraud check:", fraudSaveError.message);
     return NextResponse.json(
-      {
-        success: false,
-        message: "Fraud check-এর তথ্য সংরক্ষণ করা যায়নি।",
-      },
+      { success: false, message: "Fraud check-এর তথ্য সংরক্ষণ করা যায়নি।" },
       { status: 500 },
     );
   }
@@ -130,8 +201,7 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
-        message:
-          "এই নম্বরে fraud signal পাওয়া গেছে। Courier booking বন্ধ রাখা হয়েছে।",
+        message: "এই নম্বরে fraud signal পাওয়া গেছে। Courier booking বন্ধ রাখা হয়েছে।",
       },
       { status: 403 },
     );
@@ -139,85 +209,49 @@ export async function POST(
 
   const customerName = String(order.customer_name ?? "").trim();
   const customerPhone = String(order.phone ?? "").trim();
-
-  const customerAddress = [
-    order.address,
-    order.upazila,
-    order.district,
-  ]
-    .filter(
-      (part) => typeof part === "string" && part.trim() !== "",
-    )
+  const customerAddress = [order.address, order.upazila, order.district]
+    .filter((part) => typeof part === "string" && part.trim() !== "")
     .map((part) => String(part).trim())
     .join(", ");
-
   const orderTotal = Number(order.total);
 
   if (
-    !customerName ||
-    !customerPhone ||
-    !customerAddress ||
-    !Number.isFinite(orderTotal) ||
-    orderTotal < 0 ||
-    !order.order_number
+    !customerName || !customerPhone || !customerAddress ||
+    !Number.isFinite(orderTotal) || orderTotal < 0 || !order.order_number
   ) {
     return NextResponse.json(
-      {
-        success: false,
-        message: "অর্ডারের নাম, ফোন, ঠিকানা বা মোট টাকা সঠিক নয়।",
-      },
+      { success: false, message: "অর্ডারের নাম, ফোন, ঠিকানা বা মোট টাকা সঠিক নয়।" },
       { status: 400 },
     );
   }
 
   const items = Array.isArray(order.items) ? order.items : [];
-
   const itemDescription = items
     .map((item: unknown) => {
       if (!item || typeof item !== "object") return "";
-
       const value = item as Record<string, unknown>;
-
-      const name =
-        typeof value.name === "string"
-          ? value.name
-          : typeof value.productName === "string"
-            ? value.productName
-            : "Saree";
-
+      const name = typeof value.name === "string"
+        ? value.name
+        : typeof value.productName === "string" ? value.productName : "Saree";
       const quantity = Number(value.quantity ?? 1);
-
-      return `${name} x${
-        Number.isFinite(quantity) && quantity > 0
-          ? quantity
-          : 1
-      }`;
+      return `${name} x${Number.isFinite(quantity) && quantity > 0 ? quantity : 1}`;
     })
     .filter(Boolean)
     .join(", ")
     .slice(0, 250);
 
-  // Atomically claim the order to prevent concurrent duplicate booking.
-  const { data: claimedOrder, error: claimError } =
-    await supabaseAdmin
-      .from("orders")
-      .update({
-        steadfast_booking_status: "booking",
-        steadfast_booking_error: null,
-      })
-      .eq("id", id)
-      .eq("steadfast_booking_status", "not_booked")
-      .select("id")
-      .maybeSingle();
+  const { data: claimedOrder, error: claimError } = await supabaseAdmin
+    .from("orders")
+    .update({ steadfast_booking_status: "booking", steadfast_booking_error: null })
+    .eq("id", id)
+    .eq("steadfast_booking_status", "not_booked")
+    .select("id")
+    .maybeSingle();
 
   if (claimError) {
     console.error("Booking claim failed:", claimError.message);
-
     return NextResponse.json(
-      {
-        success: false,
-        message: "Booking শুরু করা যায়নি।",
-      },
+      { success: false, message: "Booking শুরু করা যায়নি।" },
       { status: 500 },
     );
   }
@@ -226,8 +260,7 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
-        message:
-          "অন্য একটি request এই অর্ডারটি processing করছে। Status পরীক্ষা করুন।",
+        message: "অন্য একটি request এই অর্ডারটি processing করছে। Status পরীক্ষা করুন।",
       },
       { status: 409 },
     );
@@ -239,18 +272,12 @@ export async function POST(
       recipient_name: customerName,
       recipient_phone: customerPhone,
       recipient_address: customerAddress,
-      cod_amount:
-        order.payment_method === "cod" ? orderTotal : 0,
-      note:
-        typeof order.note === "string"
-          ? order.note.slice(0, 200)
-          : "",
+      cod_amount: order.payment_method === "cod" ? orderTotal : 0,
+      note: typeof order.note === "string" ? order.note.slice(0, 200) : "",
       item_description: itemDescription || "Saree order",
     });
 
-    const bookingDate =
-      booking.bookedAt ?? new Date().toISOString();
-
+    const bookingDate = booking.bookedAt ?? new Date().toISOString();
     const { error: saveError } = await supabaseAdmin
       .from("orders")
       .update({
@@ -265,16 +292,11 @@ export async function POST(
       .eq("steadfast_booking_status", "booking");
 
     if (saveError) {
-      console.error(
-        "Could not save booking details:",
-        saveError.message,
-      );
-
+      console.error("Could not save booking details:", saveError.message);
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Booking সফল হয়ে থাকতে পারে, কিন্তু tracking তথ্য save হয়নি। আবার booking না করে Steadfast portal পরীক্ষা করুন।",
+          message: "Booking সফল হয়ে থাকতে পারে, কিন্তু tracking তথ্য save হয়নি। আবার booking না করে Steadfast portal পরীক্ষা করুন।",
         },
         { status: 500 },
       );
@@ -294,35 +316,16 @@ export async function POST(
       "Steadfast booking failed:",
       error instanceof Error ? error.message : "Unknown error",
     );
-
-    const errorMessage =
-      error instanceof Error
-        ? error.message.slice(0, 500)
-        : "Unknown booking error";
-
-    // Do not automatically retry an uncertain booking.
+    const errorMessage = error instanceof Error ? error.message.slice(0, 500) : "Unknown booking error";
     const { error: saveError } = await supabaseAdmin
       .from("orders")
-      .update({
-        steadfast_booking_status: "booking_error",
-        steadfast_booking_error: errorMessage,
-      })
+      .update({ steadfast_booking_status: "booking_error", steadfast_booking_error: errorMessage })
       .eq("id", id)
       .eq("steadfast_booking_status", "booking");
 
-    if (saveError) {
-      console.error(
-        "Could not save booking error:",
-        saveError.message,
-      );
-    }
-
+    if (saveError) console.error("Could not save booking error:", saveError.message);
     return NextResponse.json(
-      {
-        success: false,
-        message:
-          "Booking-এর ফলাফল নিশ্চিত নয়। Duplicate এড়াতে Steadfast portal পরীক্ষা করুন।",
-      },
+      { success: false, message: "Booking-এর ফলাফল নিশ্চিত নয়। Duplicate এড়াতে Steadfast portal পরীক্ষা করুন।" },
       { status: 502 },
     );
   }

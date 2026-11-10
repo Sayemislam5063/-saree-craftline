@@ -4,6 +4,73 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabase/supabase-client"; // আপনার পাথ অনুযায়ী ঠিক করে নিন
 
+// Bangladesh time helpers and resilient order-item parsing.
+function getDhakaDateKey(value: string | Date) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dhaka",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function formatOrderDate(value: string | Date, withTime = true) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "তারিখ পাওয়া যায়নি";
+  return new Intl.DateTimeFormat("en-BD", {
+    timeZone: "Asia/Dhaka",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+    ...(withTime ? { hour: "numeric", minute: "2-digit", hour12: true } : {}),
+  }).format(date);
+}
+
+function normalizeOrderPhone(value: unknown) {
+  let digits = String(value ?? "").replace(/\D/g, "");
+  if (digits.startsWith("880") && digits.length >= 13) digits = `0${digits.slice(3)}`;
+  return digits;
+}
+
+function getOrderItems(order: any): any[] {
+  if (Array.isArray(order?.items)) return order.items;
+  if (typeof order?.items === "string") {
+    try {
+      const parsed = JSON.parse(order.items);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function getItemImage(item: any): string {
+  const images = Array.isArray(item?.images) ? item.images : [];
+  return String(
+    item?.imageUrl ?? item?.image_url ?? item?.thumbnailUrl ??
+    item?.thumbnail_url ?? item?.image ?? images[0] ?? ""
+  ).trim();
+}
+
+function getItemName(item: any) {
+  return item?.name || item?.productName || item?.product_name || "Saree";
+}
+
+function getOrderPieceCount(order: any) {
+  return getOrderItems(order).reduce((sum, item) => {
+    const quantity = Number(item?.quantity ?? 1);
+    return sum + (Number.isFinite(quantity) && quantity > 0 ? quantity : 1);
+  }, 0);
+}
+
+function getOrderStatus(order: any) {
+  return String(order?.steadfast_delivery_status ?? "processing").toLowerCase();
+}
+
 // ✨ ডিস্ট্রিক্ট লিস্ট (প্রয়োজন অনুযায়ী আপনি বাড়াতে পারেন)
 const districts = ["ঢাকা", "চট্টগ্রাম", "রাজশাহী", "খুলনা", "বরিশাল", "সিলেট", "রংপুর", "ময়মনসিংহ", "কুমিল্লা", "নারায়ণগঞ্জ", "গাজীপুর", "টাঙ্গাইল", "নরসিংদী", "মুন্সিগঞ্জ", "মানিকগঞ্জ", "কিশোরগঞ্জ", "ফরিদপুর", "গোপালগঞ্জ", "মাদারীপুর", "রাজবাড়ী", "শরীয়তপুর", "কক্সবাজার", "ব্রাহ্মণবাড়িয়া", "চাঁদপুর", "ফেনী", "নোয়াখালী", "লক্ষ্মীপুর", "খাগড়াছড়ি", "রাঙামাটি", "বান্দরবান", "নাটোর", "নওগাঁ", "চাঁপাইনবাবগঞ্জ", "পাবনা", "সিরাজগঞ্জ", "বগুড়া", "জয়পুরহাট", "দিনাজপুর", "ঠাকুরগাঁও", "পঞ্চগড়", "কুড়িগ্রাম", "লালমনিরহাট", "নীলফামারী", "গাইবান্ধা", "যশোর", "সাতক্ষীরা", "বাগেরহাট", "ঝিনাইদহ", "মাগুরা", "নড়াইল", "কুষ্টিয়া", "চুয়াডাঙ্গা", "মেহেরপুর", "ভোলা", "পটুয়াখালী", "পিরোজপুর", "বরগুনা", "ঝালকাঠি", "মৌলভীবাজার", "হবিগঞ্জ", "সুনামগঞ্জ", "জামালপুর", "শেরপুর", "নেত্রকোনা"];
 
@@ -13,6 +80,11 @@ export default function OrdersPage() {
   
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", phone: "", address: "", upazila: "", district: "" });
@@ -59,15 +131,43 @@ export default function OrdersPage() {
 
   const filteredOrders = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return orders;
+    const todayKey = getDhakaDateKey(new Date());
+    const monthKey = todayKey.slice(0, 7);
+    const oneYearAgo = new Date();
+    oneYearAgo.setDate(oneYearAgo.getDate() - 365);
+    const oneYearAgoKey = getDhakaDateKey(oneYearAgo);
+
     return orders.filter((order) => {
-      return (
+      const matchesSearch = !term ||
         String(order.order_number ?? "").toLowerCase().includes(term) ||
+        String(order.id ?? "").toLowerCase().includes(term) ||
         String(order.customer_name ?? "").toLowerCase().includes(term) ||
-        String(order.phone ?? "").toLowerCase().includes(term)
-      );
+        String(order.phone ?? "").toLowerCase().includes(term);
+      if (!matchesSearch) return false;
+
+      const status = getOrderStatus(order);
+      let matchesStatus = true;
+      if (statusFilter === "cancelled") matchesStatus = status === "cancelled" || status === "canceled";
+      else if (statusFilter === "in_review") matchesStatus = status === "in_review";
+      else if (statusFilter === "pending") matchesStatus = status === "pending";
+      else if (statusFilter === "partial") matchesStatus = status.includes("partial");
+      else if (statusFilter === "delivered") matchesStatus = status === "delivered";
+      else if (statusFilter === "processing") matchesStatus = status === "processing" || !status;
+
+      if (!matchesStatus) return false;
+
+      const orderDate = getDhakaDateKey(order.created_at);
+      if (!orderDate) return false;
+      if (dateFilter === "today" && orderDate !== todayKey) return false;
+      if (dateFilter === "month" && orderDate.slice(0, 7) !== monthKey) return false;
+      if (dateFilter === "year" && orderDate < oneYearAgoKey) return false;
+      if (dateFilter === "custom") {
+        if (customStartDate && orderDate < customStartDate) return false;
+        if (customEndDate && orderDate > customEndDate) return false;
+      }
+      return true;
     });
-  }, [orders, search]);
+  }, [orders, search, statusFilter, dateFilter, customStartDate, customEndDate]);
 
   const pendingCount = orders.filter((o) => o.steadfast_delivery_status === "pending").length;
   const processingCount = orders.filter((o) => o.steadfast_delivery_status === "in_review" || o.steadfast_delivery_status === "processing").length;
@@ -77,8 +177,9 @@ export default function OrdersPage() {
     if (order.fraud_check_status === "blocked") return <span className="status-badge blocked">🚫 Fraud Blocked</span>;
     if (order.steadfast_delivery_status === "in_review") return <span className="status-badge review">⏳ In Review</span>;
     if (order.steadfast_delivery_status === "pending") return <span className="status-badge pending">📦 Pending</span>;
+    if (String(order.steadfast_delivery_status ?? "").toLowerCase().includes("partial")) return <span className="status-badge partial">🟠 Partial Delivered</span>;
     if (order.steadfast_delivery_status === "delivered") return <span className="status-badge delivered">✅ Delivered</span>;
-    if (order.steadfast_delivery_status === "cancelled") return <span className="status-badge cancelled">❌ Cancelled</span>;
+    if (order.steadfast_delivery_status === "cancelled" || order.steadfast_delivery_status === "canceled") return <span className="status-badge cancelled">❌ Cancelled</span>;
     return <span className="status-badge default">⏳ Processing</span>;
   };
 
@@ -130,6 +231,47 @@ export default function OrdersPage() {
       alert("আপডেট করতে সমস্যা হয়েছে: " + err.message);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteOrder = async (order: any) => {
+    if (!order?.id || deletingOrderId) return;
+
+    const hasCourierBooking = Boolean(
+      order.steadfast_tracking_code ||
+      order.steadfast_consignment_id ||
+      order.steadfast_booking_status === "booked"
+    );
+    const warning = hasCourierBooking
+      ? "\n\nসতর্কতা: এই অর্ডার Steadfast-এ বুক করা হয়েছে। এখানে ডিলিট করলে শুধু ওয়েবসাইটের অর্ডার রেকর্ড মুছবে; Steadfast courier booking বাতিল হবে না। আগে Steadfast থেকে parcel cancel করে নাও।"
+      : "";
+
+    const confirmed = window.confirm(
+      `তুমি কি নিশ্চিতভাবে এই অর্ডারটি ডিলিট করতে চাও?\nOrder: ${order.order_number || order.id}${warning}\n\nডিলিট করলে এটি Orders list ও database থেকে মুছে যাবে।`
+    );
+    if (!confirmed) return;
+
+    setDeletingOrderId(order.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Admin login পাওয়া যায়নি। আবার লগইন করো।");
+
+      const response = await fetch(`/api/orders/${order.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "অর্ডার ডিলিট করা যায়নি।");
+      }
+
+      setOrders((previous) => previous.filter((item) => item.id !== order.id));
+      setSelectedOrder((previous: any) => previous?.id === order.id ? null : previous);
+      alert("অর্ডারটি database থেকে সফলভাবে ডিলিট হয়েছে।");
+    } catch (error: any) {
+      alert("অর্ডার ডিলিট করতে সমস্যা হয়েছে: " + (error?.message || "Unknown error"));
+    } finally {
+      setDeletingOrderId(null);
     }
   };
 
@@ -338,47 +480,98 @@ export default function OrdersPage() {
         </div>
 
         <div className="search-card">
-          <div className="search-box">
-            <span>⌕</span>
-            <input type="text" placeholder="Search by order number, customer name or phone..." value={search} onChange={(event) => setSearch(event.target.value)} />
-            {search && <button type="button" className="clear-search" onClick={() => setSearch("")}>×</button>}
+          <div className="filter-toolbar">
+            <div className="search-box">
+              <span>⌕</span>
+              <input type="text" placeholder="Order ID / Order Number / Customer / Phone দিয়ে সার্চ..." value={search} onChange={(event) => setSearch(event.target.value)} />
+              {search && <button type="button" className="clear-search" onClick={() => setSearch("")}>×</button>}
+            </div>
+            <select className="filter-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter by order status">
+              <option value="all">All Status</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="in_review">In Review</option>
+              <option value="pending">Pending</option>
+              <option value="partial">Partial Delivered</option>
+              <option value="delivered">Delivered</option>
+              <option value="processing">Processing</option>
+            </select>
+            <select className="filter-select date-preset" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} aria-label="Filter orders by date">
+              <option value="all">All Dates</option>
+              <option value="today">Today’s Orders</option>
+              <option value="month">This Month</option>
+              <option value="year">Last 1 Year</option>
+              <option value="custom">Custom Date</option>
+            </select>
           </div>
+          {dateFilter === "custom" && (
+            <div className="custom-date-row">
+              <label>From <input type="date" value={customStartDate} onChange={(event) => setCustomStartDate(event.target.value)} /></label>
+              <label>To <input type="date" value={customEndDate} min={customStartDate || undefined} onChange={(event) => setCustomEndDate(event.target.value)} /></label>
+              <button type="button" className="reset-filter-btn" onClick={() => { setCustomStartDate(""); setCustomEndDate(""); }}>Reset dates</button>
+            </div>
+          )}
+          <div className="filter-result-line">Showing <strong>{filteredOrders.length}</strong> of <strong>{orders.length}</strong> orders</div>
         </div>
 
         <div className="split-layout">
           <section className="management-card order-list-pane">
             <div className="card-header">
               <div><div className="section-label">ORDER MANAGEMENT</div><h2>All Orders</h2></div>
-              <div className="order-count">{search ? `${filteredOrders.length} of ${orders.length} Orders` : `${orders.length} Orders`}</div>
+              <div className="order-count">{filteredOrders.length} of {orders.length} Orders</div>
             </div>
 
             {isLoading ? (
               <div className="order-loading"><div className="loading-spinner"></div><h3>Loading Orders...</h3></div>
             ) : filteredOrders.length === 0 ? (
-              <div className="empty-state"><div className="empty-icon">📦</div><h3>No Orders Found</h3></div>
+              <div className="empty-state"><div className="empty-icon">📦</div><h3>No Orders Found</h3><p>সার্চ অথবা filter পরিবর্তন করে দেখো।</p></div>
             ) : (
               <div className="orders-list">
-                {filteredOrders.map((order) => (
-                  <div className={`order-card ${selectedOrder?.id === order.id ? "active" : ""}`} key={order.id} onClick={() => { setSelectedOrder(order); setIsEditing(false); }}>
-                    <div className="order-summary-row">
-                      <div className="order-summary-info">
-                        <span className="order-number">{order.order_number}</span>
-                        <strong>{order.customer_name}</strong>
-                        {order.fraud_check_status && (
-                           <span className="fraud-mini-text">
-                             {order.fraud_check_status === "passed" ? "✅ Safe" : order.fraud_check_status === "blocked" ? "🚫 Blocked" : "⚠ Review"} 
-                             {order.fraud_score ? ` (Score: ${order.fraud_score})` : ""}
-                           </span>
-                        )}
-                      </div>
-                      <div className="order-summary-right">
-                        <div style={{ marginRight: "10px" }}>{getStatusBadge(order)}</div>
-                        <strong className="order-summary-total">৳ {Number(order.total).toLocaleString("en-BD")}</strong>
-                        <span className="order-expand-icon">{selectedOrder?.id === order.id ? "−" : "+"}</span>
+                {filteredOrders.map((order) => {
+                  const items = getOrderItems(order);
+                  const pieces = getOrderPieceCount(order);
+                  return (
+                    <div className={`order-card ${selectedOrder?.id === order.id ? "active" : ""}`} key={order.id} onClick={() => { setSelectedOrder(order); setIsEditing(false); }}>
+                      <div className="order-summary-row">
+                        <div className="order-summary-info">
+                          <span className="order-number">{order.order_number || order.id}</span>
+                          <strong>{order.customer_name}</strong>
+                          <span className="order-card-date">🗓 {formatOrderDate(order.created_at, true)}</span>
+                          <div className="order-mini-products">
+                            {items.slice(0, 4).map((item: any, index: number) => {
+                              const imageUrl = getItemImage(item);
+                              return (
+                                <div className="mini-product" key={`${order.id}-${index}`} title={`${getItemName(item)} × ${item.quantity ?? 1}`}>
+                                  {imageUrl ? <img src={imageUrl} alt={getItemName(item)} loading="lazy" /> : <span className="mini-product-placeholder">🧵</span>}
+                                  <span className="mini-product-qty">×{item.quantity ?? 1}</span>
+                                </div>
+                              );
+                            })}
+                            {items.length > 4 && <span className="more-products">+{items.length - 4}</span>}
+                            <span className="piece-count">{pieces} পিস / {items.length} ডিজাইন</span>
+                          </div>
+                          {order.fraud_check_status && (
+                            <span className="fraud-mini-text">
+                              {order.fraud_check_status === "passed" ? "✅ Safe" : order.fraud_check_status === "blocked" ? "🚫 Blocked" : "⚠ Review"}
+                              {order.fraud_score ? ` (Score: ${order.fraud_score})` : ""}
+                            </span>
+                          )}
+                        </div>
+                        <div className="order-summary-right">
+                          <div className="order-card-status">{getStatusBadge(order)}</div>
+                          <strong className="order-summary-total">৳ {Number(order.total ?? 0).toLocaleString("en-BD")}</strong>
+                          <button
+                            type="button"
+                            className="delete-order-btn"
+                            title="Delete order"
+                            disabled={deletingOrderId === order.id}
+                            onClick={(event) => { event.stopPropagation(); void handleDeleteOrder(order); }}
+                          >{deletingOrderId === order.id ? "..." : "🗑"}</button>
+                          <span className="order-expand-icon">{selectedOrder?.id === order.id ? "−" : "+"}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>
@@ -387,9 +580,10 @@ export default function OrdersPage() {
             {selectedOrder ? (
               <div className="details-card">
                 <div className="details-header">
-                  <div><span className="details-order-num">{selectedOrder.order_number}</span><h2>{selectedOrder.customer_name}</h2></div>
+                  <div><span className="details-order-num">{selectedOrder.order_number || selectedOrder.id}</span><h2>{selectedOrder.customer_name}</h2></div>
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button className="edit-details" onClick={handleEditClick} title="Edit Order">✏️</button>
+                    <button className="delete-details" onClick={() => void handleDeleteOrder(selectedOrder)} disabled={deletingOrderId === selectedOrder.id} title="Delete Order">{deletingOrderId === selectedOrder.id ? "..." : "🗑"}</button>
                     <button className="close-details" onClick={() => setSelectedOrder(null)}>×</button>
                   </div>
                 </div>
@@ -406,6 +600,30 @@ export default function OrdersPage() {
                     </form>
                   ) : (
                     <div className="order-grid">
+                      <div className="order-date-banner">
+                        <span>🗓 ORDER PLACED ON</span>
+                        <strong>{formatOrderDate(selectedOrder.created_at, true)}</strong>
+                        <small>Order ID: {selectedOrder.order_number || selectedOrder.id}</small>
+                      </div>
+                      <div className="order-history-panel">
+                        <div className="order-history-heading">
+                          <div><span>📚 CUSTOMER HISTORY</span><strong>এই নম্বরের শেষ ৫টি অর্ডার</strong></div>
+                          <b>{orders.filter((item) => normalizeOrderPhone(item.phone) === normalizeOrderPhone(selectedOrder.phone)).length} টি মোট</b>
+                        </div>
+                        <div className="order-history-list">
+                          {orders
+                            .filter((item) => normalizeOrderPhone(item.phone) === normalizeOrderPhone(selectedOrder.phone))
+                            .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+                            .slice(0, 5)
+                            .map((historyOrder: any) => (
+                              <button type="button" className={`history-order-row ${historyOrder.id === selectedOrder.id ? "current" : ""}`} key={historyOrder.id} onClick={() => { setSelectedOrder(historyOrder); setIsEditing(false); }}>
+                                <span className="history-order-main"><strong>{historyOrder.order_number || historyOrder.id}</strong><small>{formatOrderDate(historyOrder.created_at, true)}</small></span>
+                                <span className="history-order-side">{getStatusBadge(historyOrder)}<strong>৳ {Number(historyOrder.total ?? 0).toLocaleString("en-BD")}</strong></span>
+                              </button>
+                            ))}
+                          {orders.filter((item) => normalizeOrderPhone(item.phone) === normalizeOrderPhone(selectedOrder.phone)).length === 0 && <p className="history-empty">এই নম্বরে আর কোনো অর্ডার পাওয়া যায়নি।</p>}
+                        </div>
+                      </div>
                       <div className="fraud-panel">
                         <div className="fraud-header"><span>Steadfast Fraud Report</span><button className="refresh-fraud-btn" onClick={handleRefreshFraud} disabled={isRefreshingFraud}>{isRefreshingFraud ? "Wait..." : "🔄 Refresh"}</button></div>
                         <div className="fraud-main-content">
@@ -428,8 +646,29 @@ export default function OrdersPage() {
                       <div className="order-info-block"><span>🚚 Delivery</span><strong>{selectedOrder.delivery_type === "insideDhaka" ? "Inside Dhaka" : "Outside Dhaka"}</strong></div>
                       {selectedOrder.steadfast_tracking_code && (<div className="order-info-block" style={{ background: "#eef8f3", borderColor: "#c1e8d1" }}><span style={{ color: "#1f6a42" }}>📦 Steadfast Tracking</span><strong style={{ color: "#1f6a42" }}>{selectedOrder.steadfast_tracking_code}</strong></div>)}
                       <div className="order-items">
-                        <div className="order-section-title">Ordered Products</div>
-                        {Array.isArray(selectedOrder.items) && selectedOrder.items.map((item: any, index: number) => (<div className="order-item" key={index}><div><strong>{item.name || item.productName || "Product"}</strong><span>Qty: {item.quantity ?? 1}</span></div></div>))}
+                        <div className="order-section-title">🛍️ Ordered Products ({getOrderPieceCount(selectedOrder)} পিস)</div>
+                        {getOrderItems(selectedOrder).map((item: any, index: number) => {
+                          const imageUrl = getItemImage(item);
+                          const quantity = Number(item.quantity ?? 1);
+                          const unitPrice = Number(item.unitPrice ?? item.price ?? 0);
+                          const lineTotal = Number(item.totalPrice ?? item.total_price ?? (unitPrice * quantity));
+                          return (
+                            <div className="order-product-card" key={`${selectedOrder.id}-${index}`}>
+                              <div className="order-product-image">
+                                {imageUrl ? <img src={imageUrl} alt={getItemName(item)} loading="lazy" /> : <span>🧵</span>}
+                              </div>
+                              <div className="order-product-info">
+                                <strong>{getItemName(item)}</strong>
+                                <span>Code: {item.productCode || item.code || item.product_code || "—"}</span>
+                                <span>Qty: {quantity} {item.blouseOption === "withBlouse" ? "· Blouse সহ" : item.blouseOption === "withoutBlouse" ? "· Blouse ছাড়া" : ""}</span>
+                              </div>
+                              <div className="order-product-price">
+                                {lineTotal > 0 && <strong>৳ {lineTotal.toLocaleString("en-BD")}</strong>}
+                                {unitPrice > 0 && <small>৳ {unitPrice.toLocaleString("en-BD")} / পিস</small>}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                       <div className="order-price-summary">
                         <div><span>Product Subtotal</span><strong>৳ {Number(selectedOrder.subtotal ?? 0).toLocaleString("en-BD")}</strong></div>
@@ -645,7 +884,7 @@ export default function OrdersPage() {
         .status-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 6px; font-size: 9px; font-weight: 900; margin-bottom: 15px; }
         .status-badge.blocked { background: #2d2d2d; color: #ffcccc; } .status-badge.review { background: #fff3cd; color: #856404; }
         .status-badge.pending { background: #ffe5c7; color: #a05a00; } .status-badge.delivered { background: #d4edda; color: #155724; }
-        .status-badge.cancelled { background: #f8d7da; color: #721c24; } .status-badge.error { background: #f8d7da; color: #721c24; }
+        .status-badge.cancelled { background: #f8d7da; color: #721c24; } .status-badge.partial { background: #fff0dc; color: #9c5b00; } .status-badge.error { background: #f8d7da; color: #721c24; }
         .status-badge.default { background: #f1edf0; color: #756570; }
         
         .order-grid { display: grid; gap: 12px; }
@@ -732,6 +971,65 @@ export default function OrdersPage() {
           .add-btn { margin-left: 0; width: 100%; }
           .input-grid { grid-template-columns: 1fr; }
         }
+
+        /* Order filters, product thumbnails, customer history and delete controls */
+        .filter-toolbar { display: grid; grid-template-columns: minmax(260px, 1fr) 180px 190px; gap: 10px; align-items: center; }
+        .filter-select, .custom-date-row input { height: 44px; min-width: 0; border: 1px solid #eadfe5; border-radius: 11px; background: #fff; color: #4b3b43; padding: 0 12px; outline: none; font-size: 12px; font-weight: 700; }
+        .filter-select:focus, .custom-date-row input:focus { border-color: #b14f79; box-shadow: 0 0 0 3px rgba(177,79,121,.09); }
+        .custom-date-row { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #eadfe5; }
+        .custom-date-row label { display: grid; gap: 5px; color: #8f8088; font-size: 10px; font-weight: 800; }
+        .custom-date-row input { height: 36px; }
+        .reset-filter-btn { height: 36px; padding: 0 13px; border: 1px solid #eadfe5; border-radius: 8px; background: #fff; color: #a04f72; font-size: 11px; font-weight: 800; cursor: pointer; }
+        .filter-result-line { margin-top: 10px; color: #9b8d95; font-size: 10px; }
+        .filter-result-line strong { color: #a04f72; }
+        .order-card-date { display: block; margin-top: 5px; color: #92838c; font-size: 10px; font-weight: 600; }
+        .order-mini-products { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+        .mini-product { width: 38px; height: 38px; position: relative; border: 1px solid #eee2e8; border-radius: 8px; background: #faf6f8; overflow: hidden; }
+        .mini-product img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .mini-product-placeholder { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; font-size: 17px; }
+        .mini-product-qty { position: absolute; right: 2px; bottom: 2px; background: #a9416e; color: #fff; border-radius: 5px; padding: 1px 3px; font-size: 8px; font-weight: 900; }
+        .more-products { color: #a04f72; background: #f8eaf0; border-radius: 7px; padding: 5px 7px; font-size: 10px; font-weight: 900; }
+        .piece-count { color: #786a72; font-size: 10px; font-weight: 800; margin-left: 3px; }
+        .order-card-status { display: flex; justify-content: flex-end; }
+        .delete-order-btn, .delete-details { width: 28px; height: 28px; border: 1px solid #f1d4db; border-radius: 8px; background: #fff4f5; color: #c23e5b; font-size: 13px; cursor: pointer; }
+        .delete-order-btn:hover, .delete-details:hover { background: #ffe3e8; }
+        .delete-order-btn:disabled, .delete-details:disabled { opacity: .5; cursor: wait; }
+        .order-date-banner { display: grid; gap: 6px; padding: 17px; border: 1px solid #ead5df; border-radius: 13px; background: linear-gradient(135deg, #fff7fa, #fff); }
+        .order-date-banner span { color: #a04f72; font-size: 9px; letter-spacing: 1.1px; font-weight: 900; }
+        .order-date-banner strong { color: #382832; font-size: 18px; line-height: 1.35; }
+        .order-date-banner small { color: #92838c; font-size: 10px; font-weight: 700; overflow-wrap: anywhere; }
+        .order-history-panel { border: 1px solid #eee2e8; border-radius: 12px; padding: 13px; background: #fff; }
+        .order-history-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 9px; }
+        .order-history-heading > div { display: grid; gap: 4px; }
+        .order-history-heading span { color: #a04f72; font-size: 8px; letter-spacing: 1px; font-weight: 900; }
+        .order-history-heading strong { color: #392f35; font-size: 12px; }
+        .order-history-heading > b { flex-shrink: 0; padding: 5px 8px; border-radius: 20px; background: #f8eaf0; color: #a04f72; font-size: 9px; }
+        .order-history-list { display: grid; gap: 6px; }
+        .history-order-row { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px; text-align: left; border: 1px solid #f0e7eb; border-radius: 8px; background: #fdfafb; padding: 9px; cursor: pointer; }
+        .history-order-row.current { border-color: #bd7292; background: #fff6fa; }
+        .history-order-main, .history-order-side { display: grid; gap: 4px; }
+        .history-order-main strong { color: #a04f72; font-size: 10px; overflow-wrap: anywhere; }
+        .history-order-main small { color: #91838b; font-size: 9px; }
+        .history-order-side { justify-items: end; }
+        .history-order-side .status-badge { margin: 0; padding: 3px 6px; font-size: 8px; }
+        .history-order-side > strong { color: #4b3b43; font-size: 10px; }
+        .history-empty { color: #9b8d95; font-size: 11px; margin: 8px 0 2px; }
+        .order-product-card { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px dashed #f0e7eb; }
+        .order-product-card:last-child { border-bottom: 0; }
+        .order-product-image { width: 58px; height: 68px; flex: 0 0 58px; border: 1px solid #eee2e8; border-radius: 8px; overflow: hidden; background: #f9f3f6; display: flex; align-items: center; justify-content: center; font-size: 21px; }
+        .order-product-image img { width: 100%; height: 100%; object-fit: cover; }
+        .order-product-info { flex: 1; min-width: 0; display: grid; gap: 4px; }
+        .order-product-info strong { color: #392f35; font-size: 11px; line-height: 1.4; }
+        .order-product-info span { color: #8f8088; font-size: 9px; overflow-wrap: anywhere; }
+        .order-product-price { flex: 0 0 auto; display: grid; gap: 4px; text-align: right; }
+        .order-product-price strong { color: #a04f72; font-size: 11px; }
+        .order-product-price small { color: #9b8d95; font-size: 8px; }
+        .details-header { align-items: center; }
+        .details-header > div:last-child { flex-shrink: 0; }
+        @media (max-width: 1050px) { .filter-toolbar { grid-template-columns: 1fr 1fr; } .filter-toolbar .search-box { grid-column: 1 / -1; } }
+        @media (max-width: 760px) { .filter-toolbar { grid-template-columns: 1fr; } .filter-toolbar .search-box { grid-column: auto; } .order-summary-row { align-items: stretch; } .order-summary-right { align-items: center; } .order-date-banner strong { font-size: 15px; } }
+        @media (max-width: 500px) { .history-order-row { align-items: flex-start; } .order-product-card { gap: 7px; } .order-product-image { width: 48px; height: 58px; flex-basis: 48px; } .order-product-info strong { font-size: 10px; } .order-product-price strong { font-size: 10px; } .custom-date-row { display: grid; grid-template-columns: 1fr 1fr; } .reset-filter-btn { grid-column: 1 / -1; } }
+
       `}</style>
     </div>
   );
