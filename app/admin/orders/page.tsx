@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabase/supabase-client"; // আপনার পাথ অনুযায়ী ঠিক করে নিন
+import DailyPackingPlan from "../../../components/admin/daily-packing-plan";
 
 // Bangladesh time helpers and resilient order-item parsing.
 function getDhakaDateKey(value: string | Date) {
@@ -625,6 +626,20 @@ Tracking Code: ${result.tracking_code}`);
             <div><div className="stat-label">DELIVERED</div><div className="stat-value">{deliveredCount}</div></div>
           </div>
         </div>
+
+<DailyPackingPlan
+  orders={orders}
+  onOrderUpdated={(updatedOrder) => {
+    setOrders((previous) =>
+      previous.map((item) =>
+        item.id === updatedOrder.id ? updatedOrder : item
+      )
+    );
+    setSelectedOrder((previous: any) =>
+      previous?.id === updatedOrder.id ? updatedOrder : previous
+    );
+  }}
+/>
 
         <section className="courier-summary-card">
           <div className="courier-summary-copy">
