@@ -129,7 +129,7 @@ function asNumber(value: unknown): number | null {
   return null;
 }
 
-// Missing metrics stay null instead of being displayed as a false zero.
+// Missing values remain null. An unavailable metric must never be represented as zero.
 function safeCount(...values: unknown[]): number | null {
   for (const value of values) {
     if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value;
@@ -146,36 +146,162 @@ function safeCount(...values: unknown[]): number | null {
   return null;
 }
 
+function bestAvailableCount(...values: unknown[]): number | null {
+  const parsed = values.map((value) => safeCount(value)).filter((value): value is number => value !== null);
+  // Some API versions send a placeholder zero alongside a populated alias.
+  return parsed.find((value) => value > 0) ?? parsed[0] ?? null;
+}
+
+function getDeliveredCount(data: ApiObject): number | null {
+  return bestAvailableCount(
+    data.total_delivered,
+    data.delivered_count,
+    data.deliveredCount,
+    data.totalDelivered,
+    data.delivered,
+    data.delivered_parcels,
+    data.success_parcels,
+    data.success_count,
+    data.total_success,
+  );
+}
+
+function getCancelledCount(data: ApiObject): number | null {
+  return bestAvailableCount(
+    data.total_cancelled,
+    data.cancelled_count,
+    data.cancelledCount,
+    data.totalCancelled,
+    data.cancelled,
+    data.canceled_count,
+    data.cancelled_parcels,
+    data.return_parcels,
+    data.cancel_count,
+    data.total_canceled,
+  );
+}
+
+function getParcelCount(data: ApiObject): number | null {
+  return bestAvailableCount(
+    data.total_parcels,
+    data.Total_parcels,
+    data.totalParcels,
+    data.total_parcel,
+    data.parcel_volume,
+    data.total_packets,
+    data.parcels,
+    data.total_parcel_count,
+    data.total_orders,
+    data.totalOrders,
+  );
+}
+
+function getCourierRows(data: ApiObject): ApiObject[] {
+  const value = data.couriers;
+  if (Array.isArray(value)) {
+    return value.filter(
+      (item): item is ApiObject =>
+        !!item && typeof item === "object" &&
+        String((item as ApiObject).data_type ?? "").toLowerCase() !== "rating",
+    );
+  }
+  if (value && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).filter(
+      (item): item is ApiObject =>
+        !!item && typeof item === "object" && !Array.isArray(item) &&
+        String((item as ApiObject).data_type ?? "").toLowerCase() !== "rating",
+    );
+  }
+  return [];
+}
+
+function sumCourierMetric(rows: ApiObject[], keys: string[]): number | null {
+  if (!rows.length) return null;
+  const values = rows.map((row) => {
+    for (const key of keys) {
+      const count = asNumber(row[key]);
+      if (count !== null && count >= 0) return count;
+    }
+    return null;
+  });
+  if (values.every((value) => value === null)) return null;
+  return values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
+}
+
+function useFallbackCount(primary: number | null, fallback: number | null, ratio: number | null): number | null {
+  if (fallback !== null && (primary === null || (primary === 0 && ratio !== null && ratio > 0 && fallback > 0))) {
+    return fallback;
+  }
+  if (primary === 0 && ratio !== null && ratio > 0) return null;
+  return primary;
+}
+
 export async function checkSteadfastFraud(phone: string): Promise<FraudCheckResult> {
   const normalizedPhone = normalizePhone(phone);
-  const result = await callSteadfastApi(`/fraud_check/score/${encodeURIComponent(normalizedPhone)}`);
-  const data = responseData(result);
 
-  const courierRows = Array.isArray(data.couriers)
-    ? data.couriers.filter((item): item is ApiObject => !!item && typeof item === "object" && item.data_type !== "rating")
-    : [];
-  const sumCourierMetric = (key: "orders" | "delivered" | "cancelled"): number | null => {
-    if (!courierRows.length) return null;
-    const values = courierRows.map((item) => asNumber(item[key]));
-    if (values.every((value) => value === null)) return null;
-    return values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
-  };
-  const delivered = safeCount(
-    data.total_delivered, data.delivered_count, data.delivered,
-    data.delivered_parcels, data.success_parcels, data.success_count,
-  ) ?? sumCourierMetric("delivered");
-  const cancelled = safeCount(
-    data.total_cancelled, data.cancelled_count, data.cancelled,
-    data.cancelled_parcels, data.return_parcels, data.cancel_count,
-  ) ?? sumCourierMetric("cancelled");
-  const parcels = safeCount(
-    data.total_parcels, data.Total_parcels, data.total_parcel, data.parcel_volume,
-    data.total_packets, data.parcels, data.total_parcel_count, data.total_orders,
-  ) ?? sumCourierMetric("orders");
-  const totalParcels = parcels ?? (delivered !== null && cancelled !== null ? delivered + cancelled : null);
-  const totalFraudReports = Math.max(0, safeCount(
-    data.total_reports, data.total_fraud_reports, data.fraud_reports,
-  ) ?? 0);
+  // The score endpoint supplies delivery/cancellation percentages.
+  const scoreResult = await callSteadfastApi(
+    `/fraud_check/score/${encodeURIComponent(normalizedPhone)}`,
+  );
+  const data = responseData(scoreResult);
+
+  const deliveryRatio =
+    asNumber(data.delivery_ratio) ??
+    asNumber(data.success_ratio) ??
+    asNumber(data.delivered_ratio) ??
+    asNumber(data.delivery_rate);
+  const cancellationRatio =
+    asNumber(data.cancellation_ratio) ??
+    asNumber(data.cancel_ratio) ??
+    asNumber(data.cancel_rate);
+  const returnRatio = asNumber(data.return_ratio);
+
+  const courierRows = getCourierRows(data);
+  let delivered = getDeliveredCount(data) ?? sumCourierMetric(courierRows, ["delivered", "success", "total_delivered"]);
+  let cancelled = getCancelledCount(data) ?? sumCourierMetric(courierRows, ["cancelled", "cancel", "total_cancelled"]);
+  let parcels = getParcelCount(data) ?? sumCourierMetric(courierRows, ["orders", "total", "parcels"]);
+
+  // Some Steadfast score responses include ratios but omit exact counts. In that
+  // case, query the documented legacy fraud endpoint for exact parcel counts.
+  // Also retry that endpoint when a zero count contradicts a positive percentage.
+  const countsMissing = delivered === null || cancelled === null || parcels === null;
+  const countsConflictWithRates =
+    (deliveryRatio !== null && deliveryRatio > 0 && delivered === 0) ||
+    (cancellationRatio !== null && cancellationRatio > 0 && cancelled === 0);
+
+  let legacyData: ApiObject | null = null;
+  if (countsMissing || countsConflictWithRates) {
+    try {
+      const legacyResult = await callSteadfastApi(
+        `/fraud_check/${encodeURIComponent(normalizedPhone)}`,
+      );
+      legacyData = responseData(legacyResult);
+    } catch (error) {
+      // Keep score/ratio data usable even when the legacy count endpoint is unavailable.
+      console.warn("Steadfast detailed fraud counts unavailable:", error instanceof Error ? error.message : "Unknown error");
+    }
+  }
+
+  if (legacyData) {
+    const legacyDelivered = getDeliveredCount(legacyData);
+    const legacyCancelled = getCancelledCount(legacyData);
+    const legacyParcels = getParcelCount(legacyData);
+    delivered = useFallbackCount(delivered, legacyDelivered, deliveryRatio);
+    cancelled = useFallbackCount(cancelled, legacyCancelled, cancellationRatio);
+    parcels = useFallbackCount(parcels, legacyParcels, null);
+    if (parcels === null && delivered !== null && cancelled !== null) parcels = delivered + cancelled;
+  }
+
+  if (parcels === null && delivered !== null && cancelled !== null) {
+    parcels = delivered + cancelled;
+  }
+
+  const totalFraudReports = Math.max(
+    0,
+    safeCount(data.total_reports, data.total_fraud_reports, data.fraud_reports) ??
+      (legacyData ? safeCount(legacyData.total_reports, legacyData.total_fraud_reports, legacyData.fraud_reports) : null) ??
+      0,
+  );
   const score = asNumber(data.score) ?? asNumber(data.fraud_score);
   const level = typeof data.level === "string" && data.level.trim() ? data.level.trim() : null;
   const scoringDisabled = data.scoring_disabled === true;
@@ -183,12 +309,7 @@ export async function checkSteadfastFraud(phone: string): Promise<FraudCheckResu
   const fraudCategories = Array.isArray(data.fraud_categories)
     ? data.fraud_categories.filter((item): item is string => typeof item === "string")
     : [];
-  const deliveryRatio = asNumber(data.delivery_ratio) ?? asNumber(data.success_ratio) ?? asNumber(data.delivered_ratio) ??
-    asNumber(data.delivery_rate) ??
-    (totalParcels !== null && totalParcels > 0 && delivered !== null ? (delivered / totalParcels) * 100 : null);
-  const cancellationRatio = asNumber(data.cancellation_ratio) ?? asNumber(data.cancel_ratio) ?? asNumber(data.cancel_rate) ??
-    (totalParcels !== null && totalParcels > 0 && cancelled !== null ? (cancelled / totalParcels) * 100 : null);
-  const returnRatio = asNumber(data.return_ratio);
+
   const isFraud = totalFraudReports > 0 || doubtfulReports || fraudCategories.length > 0;
   const normalizedLevel = level?.toLowerCase().replace(/[_-]/g, " ");
   const highRiskLevel = normalizedLevel === "high" || normalizedLevel === "very high" || normalizedLevel === "critical";
@@ -198,7 +319,7 @@ export async function checkSteadfastFraud(phone: string): Promise<FraudCheckResu
 
   return {
     phone: normalizedPhone,
-    totalParcels,
+    totalParcels: parcels,
     totalDelivered: delivered,
     totalCancelled: cancelled,
     totalFraudReports,

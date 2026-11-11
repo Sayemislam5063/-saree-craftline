@@ -86,6 +86,7 @@ export default function OrdersPage() {
   const [trackingError, setTrackingError] = useState("");
   const [returnReason, setReturnReason] = useState("Customer requested return");
   const [returnRequestResult, setReturnRequestResult] = useState<any | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
   
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [search, setSearch] = useState("");
@@ -697,14 +698,34 @@ Tracking Code: ${result.tracking_code}`);
                           <span className="order-number">{order.order_number || order.id}</span>
                           <strong>{order.customer_name}</strong>
                           <span className="order-card-date">🗓 {formatOrderDate(order.created_at, true)}</span>
+                          {order.steadfast_consignment_id ? (
+                            <div className="order-card-consignment">
+                              <span>STEADFAST CONSIGNMENT ID</span>
+                              <strong>{order.steadfast_consignment_id}</strong>
+                              <button type="button" onClick={(event) => { event.stopPropagation(); void copyText(String(order.steadfast_consignment_id), "Consignment ID"); }}>Copy ID</button>
+                            </div>
+                          ) : (
+                            <span className="order-card-not-booked">Steadfast: Not booked yet</span>
+                          )}
                           <div className="order-mini-products">
                             {items.slice(0, 4).map((item: any, index: number) => {
                               const imageUrl = getItemImage(item);
                               return (
-                                <div className="mini-product" key={`${order.id}-${index}`} title={`${getItemName(item)} × ${item.quantity ?? 1}`}>
+                                <button
+                                  type="button"
+                                  className="mini-product"
+                                  key={`${order.id}-${index}`}
+                                  title={`${getItemName(item)} × ${item.quantity ?? 1}${imageUrl ? " · বড় করে দেখতে ক্লিক করো" : ""}`}
+                                  disabled={!imageUrl}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    if (imageUrl) setPreviewImage({ url: imageUrl, title: getItemName(item) });
+                                  }}
+                                  aria-label={`${getItemName(item)} ছবি বড় করে দেখুন`}
+                                >
                                   {imageUrl ? <img src={imageUrl} alt={getItemName(item)} loading="lazy" /> : <span className="mini-product-placeholder">🧵</span>}
                                   <span className="mini-product-qty">×{item.quantity ?? 1}</span>
-                                </div>
+                                </button>
                               );
                             })}
                             {items.length > 4 && <span className="more-products">+{items.length - 4}</span>}
@@ -847,9 +868,9 @@ Tracking Code: ${result.tracking_code}`);
                           </div>
                         </div>
                         <div className="fraud-bottom-boxes">
-                          <div className="info-box"><span className="box-icon">📦</span><div className="box-text"><span className="box-label">TOTAL PARCELS</span><strong className="box-value" style={{ color: "#2eaa8f" }}>{selectedOrder.fraud_total_parcels ?? "তথ্য নেই"}</strong></div></div>
-                          <div className="info-box"><span className="box-icon">✅</span><div className="box-text"><span className="box-label">DELIVERED</span><strong className="box-value">{selectedOrder.fraud_total_delivered ?? "তথ্য নেই"}</strong></div></div>
-                          <div className="info-box"><span className="box-icon">↩️</span><div className="box-text"><span className="box-label">CANCELLED / RETURNED</span><strong className="box-value">{selectedOrder.fraud_total_cancelled ?? "তথ্য নেই"}</strong></div></div>
+                          <div className="info-box"><span className="box-icon">📦</span><div className="box-text"><span className="box-label">TOTAL PARCELS</span><strong className="box-value" style={{ color: "#2eaa8f" }}>{selectedOrder.fraud_total_parcels === null || selectedOrder.fraud_total_parcels === undefined || selectedOrder.fraud_total_parcels === "" ? "তথ্য নেই" : Number(selectedOrder.fraud_total_parcels).toLocaleString("en-BD")}</strong></div></div>
+                          <div className="info-box"><span className="box-icon">✅</span><div className="box-text"><span className="box-label">DELIVERED</span><strong className="box-value">{selectedOrder.fraud_total_delivered === null || selectedOrder.fraud_total_delivered === undefined || selectedOrder.fraud_total_delivered === "" ? "তথ্য নেই" : Number(selectedOrder.fraud_total_delivered).toLocaleString("en-BD")}</strong></div></div>
+                          <div className="info-box"><span className="box-icon">↩️</span><div className="box-text"><span className="box-label">CANCELLED / RETURNED</span><strong className="box-value">{selectedOrder.fraud_total_cancelled === null || selectedOrder.fraud_total_cancelled === undefined || selectedOrder.fraud_total_cancelled === "" ? "তথ্য নেই" : Number(selectedOrder.fraud_total_cancelled).toLocaleString("en-BD")}</strong></div></div>
                           <div className="info-box"><span className="box-icon">🛡️</span><div className="box-text"><span className="box-label">FRAUD REPORTS</span><strong className="box-value">{selectedOrder.fraud_total_reports ?? 0}</strong></div></div>
                         </div>
                       </div>
@@ -866,9 +887,16 @@ Tracking Code: ${result.tracking_code}`);
                           const lineTotal = Number(item.totalPrice ?? item.total_price ?? (unitPrice * quantity));
                           return (
                             <div className="order-product-card" key={`${selectedOrder.id}-${index}`}>
-                              <div className="order-product-image">
+                              <button
+                                type="button"
+                                className="order-product-image"
+                                disabled={!imageUrl}
+                                onClick={() => imageUrl && setPreviewImage({ url: imageUrl, title: getItemName(item) })}
+                                aria-label={`${getItemName(item)} ছবি বড় করে দেখুন`}
+                                title={imageUrl ? "ছবি বড় করে দেখুন" : "ছবি নেই"}
+                              >
                                 {imageUrl ? <img src={imageUrl} alt={getItemName(item)} loading="lazy" /> : <span>🧵</span>}
-                              </div>
+                              </button>
                               <div className="order-product-info">
                                 <strong>{getItemName(item)}</strong>
                                 <span>Code: {item.productCode || item.code || item.product_code || "—"}</span>
@@ -897,6 +925,22 @@ Tracking Code: ${result.tracking_code}`);
           </aside>
         </div>
       </main>
+
+      {previewImage && (
+        <div
+          className="image-preview-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Product image preview"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="image-preview-dialog" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="image-preview-close" onClick={() => setPreviewImage(null)} aria-label="Close image preview">×</button>
+            <img src={previewImage.url} alt={previewImage.title} />
+            <div className="image-preview-caption">{previewImage.title}</div>
+          </div>
+        </div>
+      )}
 
       {/* ============================================
           ✨ MANUAL ORDER MODAL
@@ -1195,8 +1239,14 @@ Tracking Code: ${result.tracking_code}`);
         .filter-result-line { margin-top: 10px; color: #9b8d95; font-size: 10px; }
         .filter-result-line strong { color: #a04f72; }
         .order-card-date { display: block; margin-top: 5px; color: #92838c; font-size: 10px; font-weight: 600; }
+        .order-card-consignment { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 9px; margin-top: 8px; padding: 8px 10px; width: fit-content; max-width: 100%; border: 1px solid #cce8dc; border-radius: 9px; background: #f1faf5; }
+        .order-card-consignment span { width: 100%; color: #668879; font-size: 8px; letter-spacing: .8px; font-weight: 900; }
+        .order-card-consignment strong { color: #137451; font-size: 16px; line-height: 1.2; font-weight: 900; overflow-wrap: anywhere; }
+        .order-card-consignment button { border: 1px solid #c5e4d5; border-radius: 6px; background: #fff; color: #19744f; padding: 4px 7px; font-size: 9px; font-weight: 800; cursor: pointer; }
+        .order-card-not-booked { display: inline-block; margin-top: 7px; color: #9b8d95; font-size: 9px; font-weight: 700; }
         .order-mini-products { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-        .mini-product { width: 38px; height: 38px; position: relative; border: 1px solid #eee2e8; border-radius: 8px; background: #faf6f8; overflow: hidden; }
+        .mini-product { width: 38px; height: 38px; position: relative; display: block; padding: 0; border: 1px solid #eee2e8; border-radius: 8px; background: #faf6f8; overflow: hidden; cursor: zoom-in; }
+        .mini-product:disabled { cursor: default; }
         .mini-product img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .mini-product-placeholder { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; font-size: 17px; }
         .mini-product-qty { position: absolute; right: 2px; bottom: 2px; background: #a9416e; color: #fff; border-radius: 5px; padding: 1px 3px; font-size: 8px; font-weight: 900; }
@@ -1228,8 +1278,14 @@ Tracking Code: ${result.tracking_code}`);
         .history-empty { color: #9b8d95; font-size: 11px; margin: 8px 0 2px; }
         .order-product-card { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px dashed #f0e7eb; }
         .order-product-card:last-child { border-bottom: 0; }
-        .order-product-image { width: 58px; height: 68px; flex: 0 0 58px; border: 1px solid #eee2e8; border-radius: 8px; overflow: hidden; background: #f9f3f6; display: flex; align-items: center; justify-content: center; font-size: 21px; }
+        .order-product-image { width: 58px; height: 68px; flex: 0 0 58px; padding: 0; border: 1px solid #eee2e8; border-radius: 8px; overflow: hidden; background: #f9f3f6; display: flex; align-items: center; justify-content: center; font-size: 21px; cursor: zoom-in; }
+        .order-product-image:disabled { cursor: default; }
         .order-product-image img { width: 100%; height: 100%; object-fit: cover; }
+        .image-preview-backdrop { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(22, 13, 19, .78); backdrop-filter: blur(4px); }
+        .image-preview-dialog { position: relative; display: grid; justify-items: center; gap: 10px; max-width: min(92vw, 760px); max-height: 92vh; padding: 14px; border: 1px solid rgba(255,255,255,.25); border-radius: 16px; background: #fff; box-shadow: 0 24px 80px rgba(0,0,0,.28); }
+        .image-preview-dialog img { display: block; max-width: min(86vw, 720px); max-height: 78vh; width: auto; height: auto; object-fit: contain; border-radius: 9px; }
+        .image-preview-caption { max-width: 100%; color: #51414a; font-size: 12px; font-weight: 800; text-align: center; overflow-wrap: anywhere; }
+        .image-preview-close { position: absolute; top: 7px; right: 7px; z-index: 1; width: 32px; height: 32px; border: 0; border-radius: 50%; background: #251c22; color: #fff; font-size: 22px; line-height: 1; cursor: pointer; }
         .order-product-info { flex: 1; min-width: 0; display: grid; gap: 4px; }
         .order-product-info strong { color: #392f35; font-size: 11px; line-height: 1.4; }
         .order-product-info span { color: #8f8088; font-size: 9px; overflow-wrap: anywhere; }
