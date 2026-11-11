@@ -77,6 +77,15 @@ const districts = ["ঢাকা", "চট্টগ্রাম", "রাজশ�
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [ordersLoadError, setOrdersLoadError] = useState("");
+  const [courierBalance, setCourierBalance] = useState<number | null>(null);
+  const [courierBalanceError, setCourierBalanceError] = useState("");
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [courierBusyAction, setCourierBusyAction] = useState<string | null>(null);
+  const [trackingEvents, setTrackingEvents] = useState<any[]>([]);
+  const [trackingError, setTrackingError] = useState("");
+  const [returnReason, setReturnReason] = useState("Customer requested return");
+  const [returnRequestResult, setReturnRequestResult] = useState<any | null>(null);
   
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [search, setSearch] = useState("");
@@ -100,6 +109,127 @@ export default function OrdersPage() {
   const [manualCart, setManualCart] = useState<any[]>([]);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
+  const getAdminToken = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error("Admin session পাওয়া যায়নি। আবার লগইন করো।");
+    return session.access_token;
+  };
+
+  const loadCourierBalance = async () => {
+    setIsLoadingBalance(true);
+    setCourierBalanceError("");
+    try {
+      const token = await getAdminToken();
+      const response = await fetch("/api/admin/steadfast?action=balance", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || "Balance পাওয়া যায়নি।");
+      setCourierBalance(Number(result.current_balance));
+    } catch (error: any) {
+      setCourierBalanceError(error?.message || "Balance পাওয়া যায়নি।");
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
+
+  const handleCourierAction = async (action: "status" | "tracking" | "return") => {
+    if (!selectedOrder || courierBusyAction) return;
+    if (action === "return" && !window.confirm("এই parcel-এর জন্য Steadfast-এ Return Request পাঠাবে? এটি সরাসরি parcel cancel করে না; Steadfast-এর approval প্রয়োজন হতে পারে।")) return;
+
+    setCourierBusyAction(action);
+    setTrackingError("");
+    if (action === "return") setReturnRequestResult(null);
+    try {
+      const token = await getAdminToken();
+      const response = await fetch("/api/admin/steadfast", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action,
+          orderId: selectedOrder.id,
+          ...(action === "return" ? { reason: returnReason } : {}),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || "Steadfast request failed.");
+
+      if (action === "status") {
+        const refreshed = { ...selectedOrder, steadfast_delivery_status: result.delivery_status };
+        setSelectedOrder(refreshed);
+        setOrders((previous) => previous.map((item) => item.id === refreshed.id ? refreshed : item));
+        alert(`Steadfast status আপডেট হয়েছে: ${result.delivery_status}`);
+      } else if (action === "tracking") {
+        setTrackingEvents(Array.isArray(result.trackings) ? result.trackings : []);
+        if (!Array.isArray(result.trackings) || result.trackings.length === 0) {
+          setTrackingError("এই Invoice-এর জন্য এখনো Tracking History পাওয়া যায়নি।");
+        }
+      } else {
+        setReturnRequestResult(result.return_request ?? result);
+        alert("Return Request Steadfast-এ পাঠানো হয়েছে। এটি এখনো approval pending থাকতে পারে।");
+      }
+    } catch (error: any) {
+      const message = error?.message || "Steadfast request failed.";
+      if (action === "tracking") setTrackingError(message);
+      else alert(message);
+    } finally {
+      setCourierBusyAction(null);
+    }
+  };
+
+  const handleBookParcel = async () => {
+    if (!selectedOrder || courierBusyAction) return;
+    if (!window.confirm(`Order ${selectedOrder.order_number || selectedOrder.id} Steadfast-এ বুক করবে? এটি একটি বাস্তব courier booking তৈরি করবে।`)) return;
+    setCourierBusyAction("book");
+    try {
+      const token = await getAdminToken();
+      const response = await fetch(`/api/orders/${selectedOrder.id}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || "Courier booking করা যায়নি।");
+      const { data: updatedOrder, error } = await supabase.from("orders").select("*").eq("id", selectedOrder.id).single();
+      if (error) throw error;
+      if (updatedOrder) {
+        setSelectedOrder(updatedOrder);
+        setOrders((previous) => previous.map((item) => item.id === updatedOrder.id ? updatedOrder : item));
+      }
+      alert(`Steadfast booking সফল হয়েছে।
+Consignment ID: ${result.consignment_id}
+Tracking Code: ${result.tracking_code}`);
+    } catch (error: any) {
+      alert(error?.message || "Courier booking করা যায়নি।");
+    } finally {
+      setCourierBusyAction(null);
+    }
+  };
+
+  const copyText = async (value: string, label: string) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      alert(`${label} copy হয়েছে।`);
+    } catch {
+      alert("Copy করা যায়নি। হাতে select করে copy করো।");
+    }
+  };
+
+  useEffect(() => {
+    void loadCourierBalance();
+  }, []);
+
+  useEffect(() => {
+    setTrackingEvents([]);
+    setTrackingError("");
+    setReturnRequestResult(null);
+    setReturnReason("Customer requested return");
+  }, [selectedOrder?.id]);
+
   useEffect(() => {
     const loadOrders = async () => {
       const { data, error } = await supabase
@@ -109,10 +239,12 @@ export default function OrdersPage() {
 
       if (error) {
         console.error("Orders load error:", error);
+        setOrdersLoadError(error.message || "Supabase থেকে Orders load করা যায়নি।");
         setIsLoading(false);
         return;
       }
 
+      setOrdersLoadError("");
       setOrders(data ?? []);
       
       setSelectedOrder((prevSelected: any) => {
@@ -147,12 +279,13 @@ export default function OrdersPage() {
 
       const status = getOrderStatus(order);
       let matchesStatus = true;
-      if (statusFilter === "cancelled") matchesStatus = status === "cancelled" || status === "canceled";
+      if (statusFilter === "cancelled") matchesStatus = status === "cancelled" || status === "canceled" || status === "cancelled_approval_pending";
       else if (statusFilter === "in_review") matchesStatus = status === "in_review";
       else if (statusFilter === "pending") matchesStatus = status === "pending";
       else if (statusFilter === "partial") matchesStatus = status.includes("partial");
-      else if (statusFilter === "delivered") matchesStatus = status === "delivered";
-      else if (statusFilter === "processing") matchesStatus = status === "processing" || !status;
+      else if (statusFilter === "delivered") matchesStatus = status === "delivered" || status === "delivered_approval_pending";
+      else if (statusFilter === "hold") matchesStatus = status === "hold";
+      else if (statusFilter === "processing") matchesStatus = status === "processing" || status === "unknown" || !status;
 
       if (!matchesStatus) return false;
 
@@ -174,12 +307,17 @@ export default function OrdersPage() {
   const deliveredCount = orders.filter((o) => o.steadfast_delivery_status === "delivered").length;
 
   const getStatusBadge = (order: any) => {
+    const status = String(order.steadfast_delivery_status ?? "processing").toLowerCase();
     if (order.fraud_check_status === "blocked") return <span className="status-badge blocked">🚫 Fraud Blocked</span>;
-    if (order.steadfast_delivery_status === "in_review") return <span className="status-badge review">⏳ In Review</span>;
-    if (order.steadfast_delivery_status === "pending") return <span className="status-badge pending">📦 Pending</span>;
-    if (String(order.steadfast_delivery_status ?? "").toLowerCase().includes("partial")) return <span className="status-badge partial">🟠 Partial Delivered</span>;
-    if (order.steadfast_delivery_status === "delivered") return <span className="status-badge delivered">✅ Delivered</span>;
-    if (order.steadfast_delivery_status === "cancelled" || order.steadfast_delivery_status === "canceled") return <span className="status-badge cancelled">❌ Cancelled</span>;
+    if (status === "in_review") return <span className="status-badge review">⏳ In Review</span>;
+    if (status === "pending") return <span className="status-badge pending">📦 Pending</span>;
+    if (status.includes("partial")) return <span className="status-badge partial">🟠 Partial Delivered</span>;
+    if (status === "delivered_approval_pending") return <span className="status-badge review">✅ Delivered · Approval Pending</span>;
+    if (status === "delivered") return <span className="status-badge delivered">✅ Delivered</span>;
+    if (status === "cancelled_approval_pending") return <span className="status-badge review">↩️ Cancelled · Approval Pending</span>;
+    if (status === "cancelled" || status === "canceled") return <span className="status-badge cancelled">❌ Cancelled</span>;
+    if (status === "hold") return <span className="status-badge pending">⏸ On Hold</span>;
+    if (status === "unknown" || status === "unknown_approval_pending") return <span className="status-badge default">? Unknown</span>;
     return <span className="status-badge default">⏳ Processing</span>;
   };
 
@@ -460,6 +598,14 @@ export default function OrdersPage() {
           </button>
         </div>
 
+        {ordersLoadError && (
+          <div className="orders-load-error">
+            <strong>Orders load করা যায়নি</strong>
+            <span>{ordersLoadError}</span>
+            <small>Supabase Environment Variables ও orders table-এর SELECT permission / RLS পরীক্ষা করো।</small>
+          </div>
+        )}
+
         <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-icon">🛒</div>
@@ -479,6 +625,20 @@ export default function OrdersPage() {
           </div>
         </div>
 
+        <section className="courier-summary-card">
+          <div className="courier-summary-copy">
+            <span className="courier-summary-label">STEADFAST MERCHANT</span>
+            <strong>Courier Account Balance</strong>
+            <small>{courierBalanceError ? courierBalanceError : "API থেকে সর্বশেষ Balance"}</small>
+          </div>
+          <div className="courier-summary-value">
+            <strong>{isLoadingBalance ? "লোড হচ্ছে…" : courierBalance === null ? "—" : `৳ ${courierBalance.toLocaleString("en-BD")}`}</strong>
+            <button type="button" className="refresh-fraud-btn" onClick={loadCourierBalance} disabled={isLoadingBalance}>
+              {isLoadingBalance ? "Wait…" : "↻ Refresh Balance"}
+            </button>
+          </div>
+        </section>
+
         <div className="search-card">
           <div className="filter-toolbar">
             <div className="search-box">
@@ -493,7 +653,8 @@ export default function OrdersPage() {
               <option value="pending">Pending</option>
               <option value="partial">Partial Delivered</option>
               <option value="delivered">Delivered</option>
-              <option value="processing">Processing</option>
+              <option value="hold">On Hold</option>
+              <option value="processing">Processing / Unknown</option>
             </select>
             <select className="filter-select date-preset" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} aria-label="Filter orders by date">
               <option value="all">All Dates</option>
@@ -605,6 +766,55 @@ export default function OrdersPage() {
                         <strong>{formatOrderDate(selectedOrder.created_at, true)}</strong>
                         <small>Order ID: {selectedOrder.order_number || selectedOrder.id}</small>
                       </div>
+                      <section className="courier-order-panel">
+                        <div className="courier-order-heading">
+                          <div><span>COURIER MANAGEMENT</span><strong>Steadfast Parcel Details</strong></div>
+                          {getStatusBadge(selectedOrder)}
+                        </div>
+                        <div className="courier-id-grid">
+                          <div><small>Website Order Number</small><strong>{selectedOrder.order_number || "—"}</strong><button type="button" onClick={() => void copyText(String(selectedOrder.order_number || ""), "Order Number")}>Copy</button></div>
+                          <div><small>Database Order ID</small><strong>{selectedOrder.id || "—"}</strong><button type="button" onClick={() => void copyText(String(selectedOrder.id || ""), "Order ID")}>Copy</button></div>
+                          <div><small>Consignment ID</small><strong>{selectedOrder.steadfast_consignment_id || "Not booked"}</strong>{selectedOrder.steadfast_consignment_id && <button type="button" onClick={() => void copyText(String(selectedOrder.steadfast_consignment_id), "Consignment ID")}>Copy</button>}</div>
+                          <div><small>Tracking Code</small><strong>{selectedOrder.steadfast_tracking_code || "Not available"}</strong>{selectedOrder.steadfast_tracking_code && <button type="button" onClick={() => void copyText(String(selectedOrder.steadfast_tracking_code), "Tracking Code")}>Copy</button>}</div>
+                        </div>
+                        <div className="courier-actions">
+                          {selectedOrder.steadfast_tracking_code && (
+                            <>
+                              <a className="courier-primary-link" href={`https://steadfast.com.bd/t/${encodeURIComponent(String(selectedOrder.steadfast_tracking_code))}`} target="_blank" rel="noreferrer">↗ Open Tracking Page</a>
+                              <button type="button" className="courier-action-btn" onClick={() => void copyText(`https://steadfast.com.bd/t/${encodeURIComponent(String(selectedOrder.steadfast_tracking_code))}`, "Tracking Link")}>Copy Tracking Link</button>
+                            </>
+                          )}
+                          {selectedOrder.steadfast_booking_status === "not_booked" && (
+                            <button type="button" className="courier-book-btn" onClick={handleBookParcel} disabled={!!courierBusyAction}>{courierBusyAction === "book" ? "Booking…" : "＋ Send Parcel to Steadfast"}</button>
+                          )}
+                          {(selectedOrder.steadfast_consignment_id || selectedOrder.steadfast_tracking_code || selectedOrder.order_number) && (
+                            <button type="button" className="courier-action-btn" onClick={() => void handleCourierAction("status")} disabled={!!courierBusyAction}>{courierBusyAction === "status" ? "Checking…" : "↻ Refresh Status"}</button>
+                          )}
+                          {selectedOrder.order_number && (
+                            <button type="button" className="courier-action-btn" onClick={() => void handleCourierAction("tracking")} disabled={!!courierBusyAction}>{courierBusyAction === "tracking" ? "Loading…" : "☷ Tracking History"}</button>
+                          )}
+                        </div>
+                        {trackingError && <p className="courier-inline-error">{trackingError}</p>}
+                        {trackingEvents.length > 0 && (
+                          <div className="tracking-timeline">
+                            <strong>Parcel Tracking Timeline</strong>
+                            {trackingEvents.map((event: any, index: number) => {
+                              const eventDate = event.created_at || event.updated_at || event.date || event.timestamp;
+                              const eventText = event.text || event.status || event.description || event.message || event.details || event.note || "Tracking update";
+                              return <div className="tracking-event" key={event.id || `${index}-${String(eventText)}`}><span className="tracking-event-dot"/><div><strong>{String(eventText)}</strong>{eventDate && <small>{formatOrderDate(eventDate, true)}</small>}</div></div>;
+                            })}
+                          </div>
+                        )}
+                        {(selectedOrder.steadfast_tracking_code || selectedOrder.steadfast_consignment_id) && (
+                          <div className="return-request-box">
+                            <label htmlFor="returnReason">Parcel Return Request</label>
+                            <textarea id="returnReason" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} rows={2} maxLength={500} />
+                            <button type="button" className="return-request-btn" onClick={() => void handleCourierAction("return")} disabled={!!courierBusyAction || !returnReason.trim()}>{courierBusyAction === "return" ? "Sending Request…" : "Request Parcel Return"}</button>
+                            <small>Return Request পাঠালে parcel সঙ্গে সঙ্গে cancel হয় না; Steadfast-এর approval/status আলাদা।</small>
+                            {returnRequestResult && <div className="return-result"><strong>Return Request Response</strong><span>ID: {String(returnRequestResult.id || returnRequestResult.return_request_id || returnRequestResult.consignment_id || "Request created")}</span><span>Status: {String(returnRequestResult.status || "Pending / API response")}</span></div>}
+                          </div>
+                        )}
+                      </section>
                       <div className="order-history-panel">
                         <div className="order-history-heading">
                           <div><span>📚 CUSTOMER HISTORY</span><strong>এই নম্বরের শেষ ৫টি অর্ডার</strong></div>
@@ -627,17 +837,19 @@ export default function OrdersPage() {
                       <div className="fraud-panel">
                         <div className="fraud-header"><span>Steadfast Fraud Report</span><button className="refresh-fraud-btn" onClick={handleRefreshFraud} disabled={isRefreshingFraud}>{isRefreshingFraud ? "Wait..." : "🔄 Refresh"}</button></div>
                         <div className="fraud-main-content">
-                          <div className="donut-container"><div className="donut-chart" style={{ "--delivered": `${selectedOrder.fraud_delivery_ratio || 0}%` } as React.CSSProperties}><div className="donut-inner"></div></div></div>
+                          <div className="donut-container"><div className="donut-chart" style={{ "--delivered": `${selectedOrder.fraud_delivery_ratio ?? 0}%` } as React.CSSProperties}><div className="donut-inner"></div></div></div>
                           <div className="fraud-legend-container">
                             <div className="fraud-legend">
-                              <div className="legend-item"><span className="dot delivered-dot"></span>Delivered: <strong>{selectedOrder.fraud_delivery_ratio || 0}%</strong></div>
-                              <div className="legend-item"><span className="dot cancelled-dot"></span>Cancelled: <strong>{selectedOrder.fraud_cancellation_ratio || 0}%</strong></div>
+                              <div className="legend-item"><span className="dot delivered-dot"></span>Delivered: <strong>{selectedOrder.fraud_delivery_ratio == null ? "তথ্য নেই" : `${selectedOrder.fraud_delivery_ratio}%`}</strong></div>
+                              <div className="legend-item"><span className="dot cancelled-dot"></span>Cancelled: <strong>{selectedOrder.fraud_cancellation_ratio == null ? "তথ্য নেই" : `${selectedOrder.fraud_cancellation_ratio}%`}</strong></div>
                             </div>
-                            <div className="success-rate">Success Rate: <strong>{selectedOrder.fraud_delivery_ratio || 0}%</strong></div>
+                            <div className="success-rate">Success Rate: <strong>{selectedOrder.fraud_delivery_ratio == null ? "তথ্য নেই" : `${selectedOrder.fraud_delivery_ratio}%`}</strong></div>
                           </div>
                         </div>
                         <div className="fraud-bottom-boxes">
-                          <div className="info-box"><span className="box-icon">📦</span><div className="box-text"><span className="box-label">PARCEL VOLUME</span><strong className="box-value" style={{ color: "#2eaa8f" }}>{selectedOrder.fraud_total_parcels ?? 0}</strong></div></div>
+                          <div className="info-box"><span className="box-icon">📦</span><div className="box-text"><span className="box-label">TOTAL PARCELS</span><strong className="box-value" style={{ color: "#2eaa8f" }}>{selectedOrder.fraud_total_parcels ?? "তথ্য নেই"}</strong></div></div>
+                          <div className="info-box"><span className="box-icon">✅</span><div className="box-text"><span className="box-label">DELIVERED</span><strong className="box-value">{selectedOrder.fraud_total_delivered ?? "তথ্য নেই"}</strong></div></div>
+                          <div className="info-box"><span className="box-icon">↩️</span><div className="box-text"><span className="box-label">CANCELLED / RETURNED</span><strong className="box-value">{selectedOrder.fraud_total_cancelled ?? "তথ্য নেই"}</strong></div></div>
                           <div className="info-box"><span className="box-icon">🛡️</span><div className="box-text"><span className="box-label">FRAUD REPORTS</span><strong className="box-value">{selectedOrder.fraud_total_reports ?? 0}</strong></div></div>
                         </div>
                       </div>
@@ -1029,6 +1241,48 @@ export default function OrdersPage() {
         @media (max-width: 1050px) { .filter-toolbar { grid-template-columns: 1fr 1fr; } .filter-toolbar .search-box { grid-column: 1 / -1; } }
         @media (max-width: 760px) { .filter-toolbar { grid-template-columns: 1fr; } .filter-toolbar .search-box { grid-column: auto; } .order-summary-row { align-items: stretch; } .order-summary-right { align-items: center; } .order-date-banner strong { font-size: 15px; } }
         @media (max-width: 500px) { .history-order-row { align-items: flex-start; } .order-product-card { gap: 7px; } .order-product-image { width: 48px; height: 58px; flex-basis: 48px; } .order-product-info strong { font-size: 10px; } .order-product-price strong { font-size: 10px; } .custom-date-row { display: grid; grid-template-columns: 1fr 1fr; } .reset-filter-btn { grid-column: 1 / -1; } }
+
+        .orders-load-error { display: grid; gap: 5px; margin-bottom: 14px; padding: 13px 16px; border: 1px solid #f1c7cc; border-radius: 12px; background: #fff5f5; color: #8e2935; font-size: 12px; }
+        .orders-load-error small { color: #96666c; font-size: 10px; }
+        .courier-summary-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; padding: 16px 19px; border: 1px solid #eadfe5; border-radius: 15px; background: linear-gradient(105deg, #fff, #fff8fb); box-shadow: 0 4px 15px rgba(45,25,38,.03); }
+        .courier-summary-copy { display: grid; gap: 5px; }
+        .courier-summary-label { color: #a9416e; font-size: 8px; font-weight: 900; letter-spacing: 1.4px; }
+        .courier-summary-copy strong { color: #382832; font-size: 13px; }
+        .courier-summary-copy small { color: #9b8d95; font-size: 10px; }
+        .courier-summary-value { display: flex; align-items: center; gap: 14px; }
+        .courier-summary-value > strong { color: #248b70; font-size: 20px; font-weight: 900; white-space: nowrap; }
+        .courier-order-panel { display: grid; gap: 12px; padding: 14px; border: 1px solid #e9d9e1; border-radius: 13px; background: #fff; }
+        .courier-order-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .courier-order-heading > div { display: grid; gap: 4px; }
+        .courier-order-heading span { color: #a9416e; font-size: 8px; font-weight: 900; letter-spacing: 1px; }
+        .courier-order-heading strong { color: #382832; font-size: 12px; }
+        .courier-order-heading .status-badge { margin: 0; }
+        .courier-id-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .courier-id-grid > div { min-width: 0; display: grid; gap: 5px; padding: 9px; border: 1px solid #f0e7eb; border-radius: 9px; background: #fdfafb; }
+        .courier-id-grid small { color: #95858e; font-size: 9px; font-weight: 700; }
+        .courier-id-grid strong { overflow-wrap: anywhere; color: #483640; font-size: 10px; }
+        .courier-id-grid button { justify-self: start; padding: 3px 8px; border: 1px solid #ead5df; border-radius: 6px; background: #fff; color: #a04f72; font-size: 9px; font-weight: 800; cursor: pointer; }
+        .courier-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+        .courier-primary-link, .courier-action-btn, .courier-book-btn, .return-request-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 7px 10px; border-radius: 8px; font-size: 10px; font-weight: 800; text-decoration: none; cursor: pointer; }
+        .courier-primary-link, .courier-book-btn { border: 1px solid #a9416e; background: #a9416e; color: #fff; }
+        .courier-action-btn { border: 1px solid #ead5df; background: #fff; color: #8d3b61; }
+        .courier-action-btn:disabled, .courier-book-btn:disabled, .return-request-btn:disabled { opacity: .55; cursor: wait; }
+        .courier-inline-error { margin: 0; color: #b13d4b; font-size: 10px; }
+        .tracking-timeline { display: grid; gap: 9px; padding: 11px; border-radius: 9px; background: #f9f6f8; }
+        .tracking-timeline > strong { color: #4b3b43; font-size: 10px; }
+        .tracking-event { position: relative; display: flex; align-items: flex-start; gap: 9px; min-height: 33px; }
+        .tracking-event-dot { width: 8px; height: 8px; flex: 0 0 8px; margin-top: 4px; border-radius: 50%; background: #b14f79; box-shadow: 0 0 0 3px #f2dfe8; }
+        .tracking-event > div { display: grid; gap: 3px; }
+        .tracking-event strong { color: #4b3b43; font-size: 10px; }
+        .tracking-event small { color: #988a92; font-size: 9px; }
+        .return-request-box { display: grid; gap: 7px; padding-top: 10px; border-top: 1px dashed #eadfe5; }
+        .return-request-box label { color: #70435a; font-size: 10px; font-weight: 900; }
+        .return-request-box textarea { width: 100%; padding: 9px; border: 1px solid #eadfe5; border-radius: 8px; resize: vertical; font: inherit; font-size: 10px; outline: none; }
+        .return-request-btn { justify-self: start; border: 1px solid #d8b0c2; background: #fff6fa; color: #963e68; }
+        .return-request-box > small { color: #9b8d95; font-size: 9px; line-height: 1.45; }
+        .return-result { display: grid; gap: 4px; padding: 9px; border: 1px solid #b9e5d1; border-radius: 8px; background: #f1fbf5; color: #286c4b; font-size: 10px; }
+        @media (max-width: 760px) { .courier-summary-card { align-items: flex-start; flex-direction: column; } .courier-summary-value { width: 100%; justify-content: space-between; } }
+        @media (max-width: 430px) { .courier-id-grid { grid-template-columns: 1fr; } }
 
       `}</style>
     </div>
