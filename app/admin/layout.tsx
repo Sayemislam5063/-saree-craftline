@@ -1,3 +1,5 @@
+import "./admin-mobile.css";
+
 export default function AdminLayout({
   children,
 }: {
