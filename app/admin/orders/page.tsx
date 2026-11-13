@@ -261,15 +261,30 @@ Tracking Code: ${result.tracking_code}`);
 
     setPackingBusyOrderId(order.id);
     try {
-      const { data, error } = await supabase
+      // Avoid asking PostgREST to serialize the UPDATE response as one JSON
+      // object. When RLS hides the returned row, .single() turns an otherwise
+      // valid update into the 406 "Cannot coerce..." error.
+      const { error: updateError } = await supabase
         .from("orders")
         .update({ items: updatedItems })
-        .eq("id", order.id)
-        .select("*")
-        .single();
+        .eq("id", order.id);
 
-      if (error) throw error;
-      const updatedOrder = data ?? { ...order, items: updatedItems };
+      if (updateError) throw updateError;
+
+      // Read back the saved value so RLS/no matching row is reported clearly,
+      // while avoiding the single-object coercion on the PATCH response.
+      const { data, error: verifyError } = await supabase
+        .from("orders")
+        .select("items")
+        .eq("id", order.id)
+        .maybeSingle();
+
+      if (verifyError) throw verifyError;
+      if (!data) {
+        throw new Error("Order পাওয়া যায়নি বা database policy update/read আটকেছে।");
+      }
+
+      const updatedOrder = { ...order, items: getOrderItems({ items: data.items }) };
       setOrders((previous) => previous.map((item) => item.id === order.id ? updatedOrder : item));
       setSelectedOrder((previous: any) => previous?.id === order.id ? updatedOrder : previous);
     } catch (error: any) {
