@@ -72,6 +72,21 @@ function getOrderStatus(order: any) {
   return String(order?.steadfast_delivery_status ?? "processing").toLowerCase();
 }
 
+function isPackingExcludedOrder(order: any) {
+  const status = String(order?.steadfast_delivery_status ?? "").toLowerCase();
+  return (
+    order?.fraud_check_status === "blocked" ||
+    status === "cancelled" ||
+    status === "canceled" ||
+    status === "cancelled_approval_pending"
+  );
+}
+
+function isOrderPackingDone(order: any) {
+  const items = getOrderItems(order);
+  return items.length > 0 && items.every((item: any) => item?.packingDone === true);
+}
+
 // ✨ ডিস্ট্রিক্ট লিস্ট (প্রয়োজন অনুযায়ী আপনি বাড়াতে পারেন)
 const districts = ["ঢাকা", "চট্টগ্রাম", "রাজশাহী", "খুলনা", "বরিশাল", "সিলেট", "রংপুর", "ময়মনসিংহ", "কুমিল্লা", "নারায়ণগঞ্জ", "গাজীপুর", "টাঙ্গাইল", "নরসিংদী", "মুন্সিগঞ্জ", "মানিকগঞ্জ", "কিশোরগঞ্জ", "ফরিদপুর", "গোপালগঞ্জ", "মাদারীপুর", "রাজবাড়ী", "শরীয়তপুর", "কক্সবাজার", "ব্রাহ্মণবাড়িয়া", "চাঁদপুর", "ফেনী", "নোয়াখালী", "লক্ষ্মীপুর", "খাগড়াছড়ি", "রাঙামাটি", "বান্দরবান", "নাটোর", "নওগাঁ", "চাঁপাইনবাবগঞ্জ", "পাবনা", "সিরাজগঞ্জ", "বগুড়া", "জয়পুরহাট", "দিনাজপুর", "ঠাকুরগাঁও", "পঞ্চগড়", "কুড়িগ্রাম", "লালমনিরহাট", "নীলফামারী", "গাইবান্ধা", "যশোর", "সাতক্ষীরা", "বাগেরহাট", "ঝিনাইদহ", "মাগুরা", "নড়াইল", "কুষ্টিয়া", "চুয়াডাঙ্গা", "মেহেরপুর", "ভোলা", "পটুয়াখালী", "পিরোজপুর", "বরগুনা", "ঝালকাঠি", "মৌলভীবাজার", "হবিগঞ্জ", "সুনামগঞ্জ", "জামালপুর", "শেরপুর", "নেত্রকোনা"];
 
@@ -96,6 +111,8 @@ export default function OrdersPage() {
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  const [packingBusyOrderId, setPackingBusyOrderId] = useState<string | null>(null);
+  const [packingFilter, setPackingFilter] = useState("all");
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", phone: "", address: "", upazila: "", district: "" });
@@ -221,6 +238,47 @@ Tracking Code: ${result.tracking_code}`);
     }
   };
 
+  const handleToggleOrderPacking = async (order: any) => {
+    if (!order?.id || packingBusyOrderId) return;
+    if (isPackingExcludedOrder(order)) {
+      alert("Cancelled বা Fraud Blocked Order প্যাকিং তালিকায় Entry করা যাবে না।");
+      return;
+    }
+
+    const currentItems = getOrderItems(order);
+    if (currentItems.length === 0) {
+      alert("এই Order-এ কোনো Product পাওয়া যায়নি।");
+      return;
+    }
+
+    const nextDone = !isOrderPackingDone(order);
+    const packedAt = nextDone ? new Date().toISOString() : null;
+    const updatedItems = currentItems.map((item: any) => ({
+      ...item,
+      packingDone: nextDone,
+      packingDoneAt: packedAt,
+    }));
+
+    setPackingBusyOrderId(order.id);
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .update({ items: updatedItems })
+        .eq("id", order.id)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+      const updatedOrder = data ?? { ...order, items: updatedItems };
+      setOrders((previous) => previous.map((item) => item.id === order.id ? updatedOrder : item));
+      setSelectedOrder((previous: any) => previous?.id === order.id ? updatedOrder : previous);
+    } catch (error: any) {
+      alert("Packing Entry Save হয়নি: " + (error?.message || "Unknown error"));
+    } finally {
+      setPackingBusyOrderId(null);
+    }
+  };
+
   useEffect(() => {
     void loadCourierBalance();
   }, []);
@@ -291,6 +349,13 @@ Tracking Code: ${result.tracking_code}`);
 
       if (!matchesStatus) return false;
 
+      if (packingFilter !== "all") {
+        if (isPackingExcludedOrder(order)) return false;
+        const packed = isOrderPackingDone(order);
+        if (packingFilter === "done" && !packed) return false;
+        if (packingFilter === "not_entered" && packed) return false;
+      }
+
       const orderDate = getDhakaDateKey(order.created_at);
       if (!orderDate) return false;
       if (dateFilter === "today" && orderDate !== todayKey) return false;
@@ -302,7 +367,7 @@ Tracking Code: ${result.tracking_code}`);
       }
       return true;
     });
-  }, [orders, search, statusFilter, dateFilter, customStartDate, customEndDate]);
+  }, [orders, search, statusFilter, dateFilter, customStartDate, customEndDate, packingFilter]);
 
   const pendingCount = orders.filter((o) => o.steadfast_delivery_status === "pending").length;
   const processingCount = orders.filter((o) => o.steadfast_delivery_status === "in_review" || o.steadfast_delivery_status === "processing").length;
@@ -627,19 +692,19 @@ Tracking Code: ${result.tracking_code}`);
           </div>
         </div>
 
-<DailyPackingPlan
-  orders={orders}
-  onOrderUpdated={(updatedOrder) => {
-    setOrders((previous) =>
-      previous.map((item) =>
-        item.id === updatedOrder.id ? updatedOrder : item
-      )
-    );
-    setSelectedOrder((previous: any) =>
-      previous?.id === updatedOrder.id ? updatedOrder : previous
-    );
-  }}
-/>
+        <DailyPackingPlan
+          orders={orders}
+          onOrderUpdated={(updatedOrder) => {
+            setOrders((previous) =>
+              previous.map((item) =>
+                item.id === updatedOrder.id ? updatedOrder : item
+              )
+            );
+            setSelectedOrder((previous: any) =>
+              previous?.id === updatedOrder.id ? updatedOrder : previous
+            );
+          }}
+        />
 
         <section className="courier-summary-card">
           <div className="courier-summary-copy">
@@ -671,6 +736,11 @@ Tracking Code: ${result.tracking_code}`);
               <option value="delivered">Delivered</option>
               <option value="hold">On Hold</option>
               <option value="processing">Processing / Unknown</option>
+            </select>
+            <select className="filter-select packing-filter-select" value={packingFilter} onChange={(event) => setPackingFilter(event.target.value)} aria-label="Filter orders by packing entry">
+              <option value="all">All Packing</option>
+              <option value="not_entered">Not Entry</option>
+              <option value="done">Done</option>
             </select>
             <select className="filter-select date-preset" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} aria-label="Filter orders by date">
               <option value="all">All Dates</option>
@@ -706,6 +776,8 @@ Tracking Code: ${result.tracking_code}`);
                 {filteredOrders.map((order) => {
                   const items = getOrderItems(order);
                   const pieces = getOrderPieceCount(order);
+                  const packed = isOrderPackingDone(order);
+                  const packingExcluded = isPackingExcludedOrder(order);
                   return (
                     <div className={`order-card ${selectedOrder?.id === order.id ? "active" : ""}`} key={order.id} onClick={() => { setSelectedOrder(order); setIsEditing(false); }}>
                       <div className="order-summary-row">
@@ -756,6 +828,22 @@ Tracking Code: ${result.tracking_code}`);
                         <div className="order-summary-right">
                           <div className="order-card-status">{getStatusBadge(order)}</div>
                           <strong className="order-summary-total">৳ {Number(order.total ?? 0).toLocaleString("en-BD")}</strong>
+                          {packingExcluded ? (
+                            <span className="packing-excluded-label">Not for packing</span>
+                          ) : (
+                            <button
+                              type="button"
+                              className={`order-packing-entry-btn ${packed ? "is-done" : ""}`}
+                              title={packed ? "এই Order-এর সব Product Done — Undo করতে ক্লিক করো" : "এই Order-এর সব Product একসঙ্গে Packed Entry করো"}
+                              disabled={packingBusyOrderId === order.id || getOrderItems(order).length === 0}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void handleToggleOrderPacking(order);
+                              }}
+                            >
+                              {packingBusyOrderId === order.id ? "Saving…" : packed ? "✓ Done" : "＋ Entry"}
+                            </button>
+                          )}
                           <button
                             type="button"
                             className="delete-order-btn"
@@ -1111,12 +1199,17 @@ Tracking Code: ${result.tracking_code}`);
         .order-card { border: 1px solid #eee2e8; border-radius: 12px; background: white; cursor: pointer; transition: 0.2s; }
         .order-card:hover { border-color: #d9b8c8; background: #fdfafb; }
         .order-card.active { border-color: #a9416e; box-shadow: 0 4px 12px rgba(169, 65, 110, 0.15); transform: translateX(4px); }
-        .order-summary-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; }
+        .order-summary-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; }
         .order-summary-info .order-number { display: block; margin-bottom: 2px; font-size: 11px; color: #a04f72; font-weight: 800; }
         .order-summary-info > strong { display: block; color: #392f35; font-size: 13px; font-weight: 900; }
         .fraud-mini-text { display: block; font-size: 10px; color: #888; margin-top: 4px; font-weight: 600; }
         .order-summary-right { display: flex; align-items: center; gap: 10px; }
         .order-summary-total { color: #a04f72; font-size: 14px; font-weight: 900; }
+        .order-packing-entry-btn { min-width: 68px; border: 1px solid #e6c3d2; background: #fff4f8; color: #a3426a; border-radius: 8px; padding: 7px 10px; font-size: 10px; font-weight: 900; cursor: pointer; white-space: nowrap; }
+        .order-packing-entry-btn:hover { background: #fce6ef; }
+        .order-packing-entry-btn.is-done { border-color: #bfe5d4; background: #eaf8f1; color: #16865f; }
+        .order-packing-entry-btn:disabled { opacity: .55; cursor: wait; }
+        .packing-excluded-label { color: #a09299; font-size: 8px; font-weight: 800; white-space: nowrap; }
         .order-expand-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: #f8edf2; color: #a04f72; font-size: 14px; font-weight: 900; }
 
         .order-details-pane { position: sticky; top: 24px; min-height: 500px; max-height: calc(100vh - 40px); display: flex; flex-direction: column; }
@@ -1244,7 +1337,7 @@ Tracking Code: ${result.tracking_code}`);
         }
 
         /* Order filters, product thumbnails, customer history and delete controls */
-        .filter-toolbar { display: grid; grid-template-columns: minmax(260px, 1fr) 180px 190px; gap: 10px; align-items: center; }
+        .filter-toolbar { display: grid; grid-template-columns: minmax(220px, 1fr) 155px 145px 145px; gap: 10px; align-items: center; }
         .filter-select, .custom-date-row input { height: 44px; min-width: 0; border: 1px solid #eadfe5; border-radius: 11px; background: #fff; color: #4b3b43; padding: 0 12px; outline: none; font-size: 12px; font-weight: 700; }
         .filter-select:focus, .custom-date-row input:focus { border-color: #b14f79; box-shadow: 0 0 0 3px rgba(177,79,121,.09); }
         .custom-date-row { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #eadfe5; }
