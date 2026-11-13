@@ -169,7 +169,7 @@ export default function DailyPackingPlan({ orders }: { orders: OrderRecord[]; on
 
   const totalOrders = new Set(
     orders
-      .filter((order) => dhakaDateKey(order.created_at || "") === selectedDate && !isPackingExcluded(order) && readItems(order).length > 0)
+      .filter((order) => dhakaDateKey(order.created_at || "") === selectedDate && !isPackingExcluded(order))
       .map((order) => order.id),
   ).size;
   const totalPieces = products.reduce((sum, product) => sum + product.total, 0);

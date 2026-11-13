@@ -294,6 +294,34 @@ Tracking Code: ${result.tracking_code}`);
     }
   };
 
+  const handleToggleCallDone = async (order: any) => {
+    if (!order?.id || packingBusyOrderId) return;
+    const items = getOrderItems(order);
+    if (!items.length) return;
+    const nextDone = !items.every((item: any) => item.callConfirmed === true);
+    const updatedItems = items.map((item: any) => ({
+      ...item,
+      callConfirmed: nextDone,
+      callConfirmedAt: nextDone ? new Date().toISOString() : null,
+    }));
+
+    setPackingBusyOrderId(order.id);
+    try {
+      const { error } = await supabase.from("orders").update({ items: updatedItems }).eq("id", order.id);
+      if (error) throw error;
+      const { data, error: readError } = await supabase.from("orders").select("items").eq("id", order.id).maybeSingle();
+      if (readError) throw readError;
+      if (!data) throw new Error("Order পাওয়া যায়নি বা database policy update/read আটকেছে।");
+      const updatedOrder = { ...order, items: getOrderItems({ items: data.items }) };
+      setOrders((previous) => previous.map((item) => item.id === order.id ? updatedOrder : item));
+      setSelectedOrder((previous: any) => previous?.id === order.id ? updatedOrder : previous);
+    } catch (error: any) {
+      alert("Call confirmation save হয়নি: " + (error?.message || "Unknown error"));
+    } finally {
+      setPackingBusyOrderId(null);
+    }
+  };
+
   useEffect(() => {
     void loadCourierBalance();
   }, []);
@@ -809,6 +837,12 @@ Tracking Code: ${result.tracking_code}`);
                           ) : (
                             <span className="order-card-not-booked">Steadfast: Not booked yet</span>
                           )}
+                          <div className="order-contact-actions" onClick={(event) => event.stopPropagation()}>
+                            <span className="order-contact-number">☎ {order.phone || "নম্বর নেই"}</span>
+                            {order.phone && <a className="order-call-btn" href={`tel:${normalizeOrderPhone(order.phone)}`}>☎ Call</a>}
+                            {order.phone && <button type="button" className="order-copy-phone" onClick={() => void copyText(String(order.phone), "Phone number")}>Copy</button>}
+                            {order.phone && <button type="button" className={`order-call-done-btn ${items.length && items.every((item: any) => item.callConfirmed) ? "is-done" : ""}`} disabled={packingBusyOrderId === order.id} onClick={() => void handleToggleCallDone(order)}>{items.length && items.every((item: any) => item.callConfirmed) ? "✓ Call Done" : "Mark Call Done"}</button>}
+                          </div>
                           <div className="order-mini-products">
                             {items.slice(0, 4).map((item: any, index: number) => {
                               const imageUrl = getItemImage(item);
@@ -1211,10 +1245,10 @@ Tracking Code: ${result.tracking_code}`);
         .order-count { font-size: 11px; color: #a4446d; font-weight: 700; padding: 6px 12px; border-radius: 20px; background: #f8eaf0; }
         
         .orders-list { display: grid; gap: 8px; padding: 14px; }
-        .order-card { border: 1px solid #eee2e8; border-radius: 12px; background: white; cursor: pointer; transition: 0.2s; }
-        .order-card:hover { border-color: #d9b8c8; background: #fdfafb; }
-        .order-card.active { border-color: #a9416e; box-shadow: 0 4px 12px rgba(169, 65, 110, 0.15); transform: translateX(4px); }
-        .order-summary-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; }
+        .order-card { border: 1px solid #eee2e8; border-radius: 12px; background: white; cursor: pointer; transition: border-color .18s,box-shadow .18s,transform .18s; }
+        .order-card:hover { border-color: #d9b8c8; background: #fdfafb; box-shadow: 0 5px 16px rgba(55,35,47,.055); }
+        .order-card.active { border-color: #a9416e; box-shadow: 0 4px 12px rgba(169, 65, 110, 0.15); transform: translateX(2px); }
+        .order-summary-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; }
         .order-summary-info .order-number { display: block; margin-bottom: 2px; font-size: 11px; color: #a04f72; font-weight: 800; }
         .order-summary-info > strong { display: block; color: #392f35; font-size: 13px; font-weight: 900; }
         .fraud-mini-text { display: block; font-size: 10px; color: #888; margin-top: 4px; font-weight: 600; }
@@ -1366,6 +1400,13 @@ Tracking Code: ${result.tracking_code}`);
         .order-card-consignment span { width: 100%; color: #668879; font-size: 8px; letter-spacing: .8px; font-weight: 900; }
         .order-card-consignment strong { color: #137451; font-size: 16px; line-height: 1.2; font-weight: 900; overflow-wrap: anywhere; }
         .order-card-consignment button { border: 1px solid #c5e4d5; border-radius: 6px; background: #fff; color: #19744f; padding: 4px 7px; font-size: 9px; font-weight: 800; cursor: pointer; }
+        .order-contact-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+        .order-contact-number { color: #55434d; font-size: 10px; font-weight: 800; letter-spacing: .2px; }
+        .order-call-btn,.order-copy-phone,.order-call-done-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 27px; padding: 4px 9px; border: 1px solid #eadde4; border-radius: 7px; background: #fff; color: #65515c; font-size: 9px; font-weight: 850; text-decoration: none; cursor: pointer; transition: background .15s,border-color .15s,transform .15s; }
+        .order-call-btn { border-color: #c8e6d8; background: #f0faf5; color: #167650; }
+        .order-call-done-btn.is-done { border-color: #bfe5d4; background: #eaf8f1; color: #16865f; }
+        .order-call-btn:hover,.order-copy-phone:hover,.order-call-done-btn:hover { transform: translateY(-1px); }
+        .order-call-done-btn:disabled { opacity: .55; cursor: wait; }
         .order-card-not-booked { display: inline-block; margin-top: 7px; color: #9b8d95; font-size: 9px; font-weight: 700; }
         .order-mini-products { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
         .mini-product { width: 38px; height: 38px; position: relative; display: block; padding: 0; border: 1px solid #eee2e8; border-radius: 8px; background: #faf6f8; overflow: hidden; cursor: zoom-in; }
