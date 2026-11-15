@@ -25,7 +25,7 @@ const iconBoxStyle: React.CSSProperties = {
 };
 
 export default function Header() {
-  const { totalItems } = useCart();
+  const { totalProducts } = useCart();
   const [cartOpen, setCartOpen] = useState(false);
   const router = useRouter();
 
@@ -233,9 +233,9 @@ export default function Header() {
                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
               </svg>
 
-              {totalItems > 0 && (
+              {totalProducts > 0 && (
                 <span className="cart-count">
-                  {totalItems > 99 ? "99+" : totalItems}
+                  {totalProducts > 99 ? "99+" : totalProducts}
                 </span>
               )}
             </button>

@@ -13,6 +13,7 @@ type CartItem = {
 type CartContextType = {
   items: CartItem[];
   totalItems: number;
+  totalProducts: number;
   subtotal: number;
   addToCart: (product: any, blouseOption: BlouseOption, quantity?: number) => void;
   removeFromCart: (productId: string, blouseOption: BlouseOption) => void;
@@ -95,6 +96,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // ক্যালকুলেশন
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalProducts = items.length;
   
   const subtotal = items.reduce((sum, item) => {
     let price = 0;
@@ -113,6 +115,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       value={{
         items,
         totalItems,
+        totalProducts,
         subtotal,
         addToCart,
         removeFromCart,
