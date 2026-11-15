@@ -27,60 +27,127 @@ export default function SiteChrome({
       {children}
       <Footer />
       
-      {/* Floating WhatsApp Button */}
+      {/* Animated WhatsApp pet */}
       <a
         href={`https://wa.me/${WHATSAPP_NUMBER}`}
         target="_blank"
         rel="noopener noreferrer"
         className="floating-whatsapp"
-        aria-label="WhatsApp এ যোগাযোগ করুন"
+        aria-label="Text me on WhatsApp"
       >
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="#fff">
-          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-        </svg>
+        <span className="whatsapp-label">Text me <span aria-hidden="true">↗</span></span>
+        <span className="whatsapp-pet" aria-hidden="true">
+          <span className="pet-antenna"><i /></span>
+          <span className="pet-arm pet-arm-left" />
+          <span className="pet-arm pet-arm-right" />
+          <span className="pet-head">
+            <span className="pet-face">
+              <i className="pet-eye" />
+              <i className="pet-eye" />
+              <i className="pet-smile" />
+            </span>
+          </span>
+          <span className="pet-body">
+            <span className="pet-whatsapp-mark">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2a9.9 9.9 0 0 0-8.48 15.02L2.3 22l5.1-1.34A9.9 9.9 0 1 0 12.04 2Zm0 17.98a8.04 8.04 0 0 1-4.1-1.12l-.3-.18-3.03.8.81-2.96-.2-.31a8.08 8.08 0 1 1 6.82 3.77Zm4.43-6.05c-.24-.12-1.42-.7-1.64-.78-.22-.08-.38-.12-.54.12-.16.24-.62.78-.76.94-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.94-1.2-.72-.64-1.2-1.43-1.34-1.67-.14-.24-.02-.37.1-.49l.36-.42c.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.47-.4-.4-.54-.41h-.46c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.32.98 2.48c.12.16 1.69 2.58 4.1 3.62.57.25 1.02.4 1.37.5.58.19 1.1.16 1.52.1.46-.07 1.42-.58 1.62-1.14.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.46-.28Z" /></svg>
+            </span>
+          </span>
+          <span className="pet-leg pet-leg-left" />
+          <span className="pet-leg pet-leg-right" />
+          <span className="pet-shadow" />
+        </span>
       </a>
 
       <style jsx>{`
         .floating-whatsapp {
           position: fixed;
-          bottom: 30px;
-          right: 30px;
-          width: 60px;
-          height: 60px;
-          background: linear-gradient(135deg, #25D366, #128C7E);
-          border-radius: 50%;
+          bottom: 22px;
+          right: 22px;
+          display: flex;
+          align-items: flex-end;
+          gap: 8px;
+          z-index: 999;
+          text-decoration: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .whatsapp-label {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          margin-bottom: 23px;
+          padding: 9px 13px;
+          border: 1px solid #eadde3;
+          border-radius: 999px;
+          background: #fff;
+          color: #541126;
+          box-shadow: 0 7px 22px rgba(49, 20, 31, .14);
+          font-size: 12px;
+          font-weight: 850;
+          letter-spacing: .01em;
+          animation: bubbleIn .5s ease-out both;
+        }
+        .whatsapp-label span { color: #16865f; font-size: 14px; }
+        .whatsapp-pet {
+          position: relative;
+          display: block;
+          width: 68px;
+          height: 84px;
+          flex: 0 0 68px;
+          filter: drop-shadow(0 7px 7px rgba(49, 20, 31, .18));
+          animation: petHop 2.6s ease-in-out infinite;
+        }
+        .pet-head {
+          position: absolute;
+          z-index: 2;
+          top: 13px;
+          left: 9px;
+          width: 50px;
+          height: 41px;
+          display: grid;
+          place-items: center;
+          border: 2px solid #fff;
+          border-radius: 18px 18px 15px 15px;
+          background: linear-gradient(145deg, #7a2944, #541126);
+          box-shadow: inset 0 -4px 0 rgba(40, 8, 21, .17);
+        }
+        .pet-face {
+          width: 37px;
+          height: 25px;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4);
-          z-index: 999;
-          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-          animation: floatPulse 2.5s infinite;
+          gap: 7px;
+          position: relative;
+          border-radius: 9px;
+          background: #fff;
         }
-
-        .floating-whatsapp:hover {
-          transform: translateY(-5px) scale(1.05);
-          box-shadow: 0 15px 35px rgba(37, 211, 102, 0.6);
-        }
-
-        @keyframes floatPulse {
-          0% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.5); }
-          70% { box-shadow: 0 0 0 15px rgba(37, 211, 102, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
-        }
-
+        .pet-eye { width: 4px; height: 7px; border-radius: 5px; background: #541126; animation: blink 4s infinite; }
+        .pet-smile { position: absolute; bottom: 4px; left: 15px; width: 8px; height: 4px; border-bottom: 1.5px solid #541126; border-radius: 0 0 8px 8px; }
+        .pet-antenna { position: absolute; z-index: 1; top: 3px; left: 32px; width: 3px; height: 13px; border-radius: 4px; background: #541126; }
+        .pet-antenna i { position: absolute; top: -4px; left: -3px; width: 9px; height: 9px; border: 2px solid #fff; border-radius: 50%; background: #16865f; }
+        .pet-body { position: absolute; z-index: 2; top: 51px; left: 20px; width: 29px; height: 22px; display: grid; place-items: center; border: 2px solid #fff; border-radius: 9px 9px 11px 11px; background: #64172f; }
+        .pet-whatsapp-mark { width: 15px; height: 15px; display: grid; place-items: center; border-radius: 50%; background: #16865f; }
+        .pet-whatsapp-mark svg { width: 11px; height: 11px; fill: #fff; }
+        .pet-arm { position: absolute; z-index: 1; top: 54px; width: 10px; height: 20px; border: 2px solid #fff; border-radius: 8px; background: #7a2944; transform-origin: top center; }
+        .pet-arm-left { left: 12px; transform: rotate(18deg); }
+        .pet-arm-right { right: 10px; transform: rotate(-24deg); animation: wave 1.1s ease-in-out infinite; }
+        .pet-leg { position: absolute; z-index: 1; top: 70px; width: 10px; height: 10px; border-radius: 3px 3px 6px 6px; background: #541126; }
+        .pet-leg-left { left: 23px; }
+        .pet-leg-right { right: 22px; }
+        .pet-shadow { position: absolute; bottom: 0; left: 17px; width: 36px; height: 6px; border-radius: 50%; background: rgba(49, 20, 31, .16); animation: shadowPulse 2.6s ease-in-out infinite; }
+        @keyframes petHop { 0%, 72%, 100% { transform: translateY(0); } 82% { transform: translateY(-13px) rotate(-3deg); } 90% { transform: translateY(-3px) rotate(2deg); } }
+        @keyframes wave { 0%, 100% { transform: rotate(-24deg); } 50% { transform: rotate(-55deg); } }
+        @keyframes shadowPulse { 0%, 72%, 100% { transform: scaleX(1); opacity: .8; } 82% { transform: scaleX(.7); opacity: .35; } }
+        @keyframes blink { 0%, 46%, 50%, 100% { transform: scaleY(1); } 48% { transform: scaleY(.15); } }
+        @keyframes bubbleIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
+        .floating-whatsapp:hover .whatsapp-pet { animation-duration: 1.2s; }
+        .floating-whatsapp:hover .whatsapp-label { border-color: #a98290; box-shadow: 0 9px 25px rgba(49, 20, 31, .2); }
         @media (max-width: 600px) {
-          .floating-whatsapp {
-            bottom: 20px;
-            right: 20px;
-            width: 50px;
-            height: 50px;
-          }
-          .floating-whatsapp svg {
-            width: 26px;
-            height: 26px;
-          }
+          .floating-whatsapp { bottom: 16px; right: 12px; gap: 5px; }
+          .whatsapp-pet { transform: scale(.9); transform-origin: bottom right; }
+          .whatsapp-label { margin-bottom: 20px; padding: 8px 10px; font-size: 11px; }
         }
+        @media (prefers-reduced-motion: reduce) { .whatsapp-pet, .pet-shadow, .pet-arm-right, .pet-eye, .whatsapp-label { animation: none; } }
       `}</style>
     </>
   );

@@ -209,7 +209,6 @@ export default function HomePage() {
                         </button>
                       </div>
                       <div className="slider-3d-info">
-                        <span className="category-tag">{product.categoryName || "SAREE"}</span>
                         <h4>{product.name}</h4>
                         <div className="slider-rating" aria-label={product.reviewCount ? `Rated ${product.averageRating?.toFixed(1)} from ${product.reviewCount} reviews` : "No reviews yet"}>
                           <span className="slider-stars">{Array.from({ length: 5 }, (_, star) => <i className={star < Math.round(product.averageRating ?? 0) ? "filled" : ""} key={star}>★</i>)}</span>
@@ -227,17 +226,6 @@ export default function HomePage() {
                             }}
                           >
                             {product.stock <= 0 ? "স্টক নেই" : "🛒 কার্টে যোগ করুন"}
-                          </button>
-                          <button
-                            type="button"
-                            className="slider-view-details"
-                            aria-label="View product details"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              router.push(`/products/${product.id}`);
-                            }}
-                          >
-                            ◉
                           </button>
                         </div>
                       </div>
@@ -329,19 +317,16 @@ export default function HomePage() {
         .slider-3d-info { display: flex; height: 38%; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px 20px 18px; text-align: center; background: #fff; }
         .slider-3d-info h4 { max-width: 100%; margin: 0; color: #281c21; font-size: clamp(16px, 1.5vw, 21px); font-weight: 850; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .slider-3d-info p { margin: 2px 0 0; color: #64172f; font-size: 22px; font-weight: 950; }
-        .slider-3d-info .category-tag { display: block; color: #806d74; font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
         .slider-rating { display: flex; align-items: center; justify-content: center; gap: 8px; color: #64172f; line-height: 1; }
         .slider-stars { display: inline-flex; gap: 1px; }
         .slider-stars i { color: #d5cdd1; font-size: 15px; font-style: normal; }
         .slider-stars i.filled { color: #64172f; }
         .slider-rating small { color: #6e626a; font-size: 11px; }
-        .slider-actions { display: flex; width: min(100%, 330px); gap: 10px; margin-top: 7px; }
+        .slider-actions { display: flex; width: min(100%, 330px); margin-top: 7px; }
         .slider-3d-card:not(.active) .slider-actions { visibility: hidden; height: 0; margin: 0; }
         .slider-add-to-cart { flex: 1; min-height: 48px; padding: 0 16px; border: 1px solid #64172f; border-radius: 999px; background: #64172f; color: #fff; font: inherit; font-size: 14px; font-weight: 850; cursor: pointer; transition: background .2s ease, transform .2s ease, box-shadow .2s ease; }
         .slider-add-to-cart:hover:not(:disabled) { transform: translateY(-2px); background: #3f0d20; box-shadow: 0 8px 20px rgba(84,17,38,.2); }
         .slider-add-to-cart:disabled { border-color: #d9d2d5; background: #f1eff0; color: #81777b; cursor: not-allowed; }
-        .slider-view-details { width: 48px; height: 48px; flex: 0 0 48px; border: 1.5px solid #64172f; border-radius: 50%; background: #fff; color: #64172f; font-size: 23px; cursor: pointer; transition: background .2s ease, color .2s ease, transform .2s ease; }
-        .slider-view-details:hover { transform: scale(1.05); background: #64172f; color: #fff; }
         .slider-3d-dots { display: flex; gap: 9px; margin-top: 24px; z-index: 20; }
 
         @media (max-width: 900px) {
@@ -371,9 +356,8 @@ export default function HomePage() {
           .slider-favorite { top: 11px; right: 11px; width: 36px; height: 36px; font-size: 22px; }
           .slider-3d-info h4 { font-size: 16px; }
           .slider-3d-info p { font-size: 19px; }
-          .slider-actions { width: min(100%, 300px); gap: 8px; margin-top: 5px; }
+          .slider-actions { width: min(100%, 300px); margin-top: 5px; }
           .slider-add-to-cart { min-height: 42px; padding: 0 10px; font-size: 12px; }
-          .slider-view-details { width: 42px; height: 42px; flex-basis: 42px; font-size: 20px; }
           .slider-3d-dots { margin-top: 16px; }
         }
       `}</style>
