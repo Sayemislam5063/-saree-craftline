@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import type { Product } from "../../types/product";
 import { supabase } from "../../lib/supabase/supabase-client";
+import { useCart } from "../cart/cart-provider";
 
 type ProductCardProps = {
   product: Product;
@@ -18,8 +19,13 @@ export default function ProductCard({
   product,
 }: ProductCardProps) {
   const router = useRouter();
+  const { addToCart } = useCart();
 
   const [isFavorite, setIsFavorite] = useState(false);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const [quickViewOption, setQuickViewOption] = useState<"withoutBlouse" | "withBlouse">("withoutBlouse");
+  const [quickViewQuantity, setQuickViewQuantity] = useState(1);
+  const [quickViewNotice, setQuickViewNotice] = useState("");
 
   const [avgRating, setAvgRating] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
@@ -40,6 +46,8 @@ export default function ProductCard({
     withoutBlouse: number;
     withBlouse: number;
     discountPrice?: number;
+    discountWithoutBlouse?: number;
+    discountWithBlouse?: number;
   };
 
   const isSinglePrice =
@@ -149,6 +157,20 @@ export default function ProductCard({
     };
   }, [product.id]);
 
+  useEffect(() => {
+    if (!quickViewOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setQuickViewOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [quickViewOpen]);
+
   function toggleFavorite() {
     try {
       const savedFavorites =
@@ -202,7 +224,7 @@ export default function ProductCard({
     Out of Stock হলে এই function-এ যাওয়া হবে না।
   */
   function handleButtonClick(
-    event: React.MouseEvent<HTMLAnchorElement>,
+    event: React.MouseEvent<HTMLButtonElement>,
     button: "cart" | "order",
   ) {
     event.preventDefault();
@@ -212,14 +234,22 @@ export default function ProductCard({
     if (poppedButton !== null) return;
 
     setPoppedButton(button);
+    setQuickViewNotice("");
+    setQuickViewQuantity(1);
+    setQuickViewOpen(true);
+    window.setTimeout(() => setPoppedButton(null), 400);
+  }
 
-    window.setTimeout(() => {
-      setPoppedButton(null);
-
-      router.push(
-        productDetailsUrl,
-      );
-    }, 400);
+  function completeQuickView(action: "cart" | "order") {
+    if (outOfStock) return;
+    const quantity = Math.max(1, Math.min(Number(quickViewQuantity) || 1, Number(product.stock) || 1));
+    addToCart(product, quickViewOption, quantity);
+    if (action === "order") {
+      router.push("/checkout");
+      return;
+    }
+    setQuickViewNotice("পণ্যটি কার্টে যোগ হয়েছে");
+    window.setTimeout(() => setQuickViewOpen(false), 900);
   }
 
   const roundedRating =
@@ -435,11 +465,12 @@ export default function ProductCard({
           ) : (
             <>
               {/* CART BUTTON */}
-              <Link
-                href={productDetailsUrl}
+              <button
+                type="button"
                 onClick={(event) =>
                   handleButtonClick(event, "cart")
                 }
+                className="product-card-action product-card-cart-action"
                 style={{
                   width: "100%",
                   minHeight: "42px",
@@ -468,14 +499,15 @@ export default function ProductCard({
                 }}
               >
                 🛒 কার্টে যোগ করুন
-              </Link>
+              </button>
 
               {/* ORDER BUTTON */}
-              <Link
-                href={productDetailsUrl}
+              <button
+                type="button"
                 onClick={(event) =>
                   handleButtonClick(event, "order")
                 }
+                className="product-card-action product-card-order-action"
                 style={{
                   width: "100%",
                   minHeight: "42px",
@@ -504,11 +536,31 @@ export default function ProductCard({
                 }}
               >
                 🛍️ অর্ডার করুন
-              </Link>
+              </button>
             </>
           )}
         </div>
       </div>
+
+      {quickViewOpen && (
+        <div className="quick-view-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setQuickViewOpen(false); }}>
+          <section className="quick-view-dialog" role="dialog" aria-modal="true" aria-label={`${product.name} quick view`}>
+            <button type="button" className="quick-view-close" onClick={() => setQuickViewOpen(false)} aria-label="Close">×</button>
+            <div className="quick-view-photo">{thumbnail ? <img src={thumbnail} alt={product.name} /> : <span>🧵</span>}</div>
+            <div className="quick-view-content">
+              {product.categoryName && <span className="quick-view-eyebrow">{product.categoryName}</span>}
+              <h2>{product.name}</h2>
+              <p className="quick-view-price">৳ {(isSinglePrice ? singlePrice : quickViewOption === "withBlouse" ? (pricing.discountWithBlouse ?? pricing.withBlouse) : (pricing.discountWithoutBlouse ?? pricing.withoutBlouse)).toLocaleString("bn-BD")}</p>
+              {product.description && <p className="quick-view-description">{String(product.description).slice(0, 180)}</p>}
+              {!isSinglePrice && <fieldset className="quick-view-options"><legend>শাড়ির অপশন</legend><button type="button" className={quickViewOption === "withoutBlouse" ? "selected" : ""} onClick={() => setQuickViewOption("withoutBlouse")}>ব্লাউজ ছাড়া</button><button type="button" className={quickViewOption === "withBlouse" ? "selected" : ""} onClick={() => setQuickViewOption("withBlouse")}>ব্লাউজসহ</button></fieldset>}
+              <div className="quick-view-quantity"><span>পরিমাণ</span><button type="button" onClick={() => setQuickViewQuantity((q) => Math.max(1, q - 1))} aria-label="Decrease quantity">−</button><strong>{quickViewQuantity}</strong><button type="button" onClick={() => setQuickViewQuantity((q) => Math.min(Number(product.stock) || 1, q + 1))} aria-label="Increase quantity">+</button><small>স্টক {product.stock}</small></div>
+              <div className="quick-view-actions"><button type="button" className="quick-view-cart" onClick={() => completeQuickView("cart")}>কার্টে যোগ করুন</button><button type="button" className="quick-view-order" onClick={() => completeQuickView("order")}>এখনই অর্ডার</button></div>
+              {quickViewNotice && <p className="quick-view-notice" role="status">✓ {quickViewNotice}</p>}
+              <Link className="quick-view-full-details" href={productDetailsUrl}>সম্পূর্ণ বিস্তারিত দেখুন →</Link>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* GLOBAL KEYFRAMES */}
       <style jsx global>{`
