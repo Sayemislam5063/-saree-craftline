@@ -63,7 +63,7 @@ export default function CategorySection({ category, products }: any) {
         .vertical-bar {
           width: 5px;
           height: 26px;
-          background-color: #7d3355 !important; 
+          background-color: #541126 !important; 
           border-radius: 4px;
         }
 
@@ -71,15 +71,15 @@ export default function CategorySection({ category, products }: any) {
           margin: 0;
           font-size: 24px;
           font-weight: 900;
-          color: #2b1f26;
+          color: #541126;
           display: flex;
           align-items: center;
           gap: 6px;
         }
 
         .product-count-badge {
-          background-color: #f7e6ef !important; 
-          color: #7d3355 !important; 
+          background-color: #f7f2f3 !important; 
+          color: #541126 !important; 
           font-size: 13px;
           font-weight: 800;
           padding: 4px 12px;
@@ -89,7 +89,7 @@ export default function CategorySection({ category, products }: any) {
         .dotted-line {
           flex: 1;
           height: 2px;
-          background-image: linear-gradient(to right, #7d3355 40%, rgba(255,255,255,0) 0%) !important;
+          background-image: linear-gradient(to right, #541126 40%, rgba(255,255,255,0) 0%) !important;
           background-position: bottom;
           background-size: 10px 2px;
           background-repeat: repeat-x;
@@ -98,7 +98,7 @@ export default function CategorySection({ category, products }: any) {
 
         .view-all-btn {
           flex-shrink: 0;
-          background-color: #7d3355 !important;
+          background-color: #541126 !important;
           color: white !important;
           text-decoration: none;
           font-size: 14px;

@@ -148,3 +148,22 @@ a {
 @keyframes qvFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes qvRise { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @media (max-width: 600px) { .quick-view-backdrop { align-items: end; padding: 8px; } .quick-view-dialog { grid-template-columns: minmax(0,1fr); gap: 12px; max-height: calc(100dvh - 16px); padding: 12px; border-radius: 20px 20px 12px 12px; } .quick-view-photo { min-height: 0; height: min(38dvh,280px); } .quick-view-photo img { max-height: none; } .quick-view-content { padding: 3px 4px 8px; } .quick-view-content h2 { font-size: 20px; } .quick-view-price { font-size: 19px; } .quick-view-description { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 3; -webkit-box-orient: vertical; } .quick-view-options { margin: 10px 0; } .quick-view-actions { margin-top: 10px; } }
+/* Final neutral-white / deep-maroon polish: remove lingering blush surfaces. */
+body { background: #fff !important; color: #281c21; }
+.category-title, .product-category, .rating-value, .rating-count, .rating-link,
+.review-pill-link, .section-title { color: #541126 !important; }
+.product-count-badge { background: #fff !important; color: #541126 !important; border: 1px solid #e5d9de; }
+.dotted-line { background-image: linear-gradient(to right,#541126 40%,rgba(255,255,255,0) 0%) !important; }
+.view-all-btn { background: #541126 !important; color: #fff !important; border: 1px solid #541126 !important; box-shadow: 0 5px 14px rgba(84,17,38,.14) !important; }
+.view-all-btn:hover { background: #3f0d20 !important; }
+.header .icon-btn { background: #fff !important; border: 1px solid #e8dfe2 !important; color: #541126 !important; }
+.product-card { background: #fff !important; border: 1px solid #e8dfe2 !important; }
+.product-card-cart-action { background: #fff !important; border-color: #8a5366 !important; color: #541126 !important; }
+.product-card-order-action { background: #541126 !important; color: #fff !important; }
+.product-card .review-pill-star, .product-card .rating-star.filled { color: #541126 !important; }
+input:focus, select:focus, textarea:focus { border-color: #7c314c !important; box-shadow: 0 0 0 3px rgba(84,17,38,.09) !important; }
+@media (prefers-reduced-motion: no-preference) {
+  .product-card, .product-card-action, .view-all-btn, .header .icon-btn { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease, background-color .2s ease !important; }
+  .product-card:hover { transform: translateY(-4px); }
+  .product-card-action:hover, .view-all-btn:hover { transform: translateY(-1px); }
+}
