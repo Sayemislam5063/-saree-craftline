@@ -107,12 +107,12 @@ a {
 }
 
 /* Maroon and ivory storefront refresh + quick-view dialog. */
-:root { --brand-wine: #64172f; --brand-wine-deep: #3f0d20; --brand-wine-soft: #f7edf0; --brand-ink: #25171c; --brand-line: #ead9df; --brand-muted: #806d74; }
+:root { --brand-wine: #64172f; --brand-wine-deep: #3f0d20; --brand-wine-soft: #f8f7f7; --brand-ink: #25171c; --brand-line: #e5dfe1; --brand-muted: #806d74; }
 .header { background: rgba(255,255,255,.96) !important; border-bottom: 1px solid var(--brand-line) !important; box-shadow: 0 6px 24px rgba(63,13,32,.055) !important; }
 .search-bar-container { border-color: #dcc4cc !important; box-shadow: 0 4px 14px rgba(63,13,32,.045) !important; }
 .search-submit-btn { background: linear-gradient(135deg,var(--brand-wine),var(--brand-wine-deep)) !important; }
 .product-card { border-color: var(--brand-line) !important; box-shadow: 0 8px 28px rgba(63,13,32,.07) !important; }
-.product-card:hover { border-color: #c8a3b0 !important; box-shadow: 0 16px 36px rgba(63,13,32,.13) !important; }
+.product-card:hover { border-color: #a98290 !important; box-shadow: 0 16px 36px rgba(63,13,32,.13) !important; }
 .product-category, .product-name, .price, .section-title { color: var(--brand-wine) !important; }
 .product-card-action { appearance: none; font: inherit; border-radius: 11px !important; cursor: pointer; }
 .product-card-cart-action { color: var(--brand-wine) !important; background: #fff !important; border: 1px solid #c99cab !important; }
@@ -120,8 +120,8 @@ a {
 .buy-button, .checkout-button, .add-btn { background: linear-gradient(135deg,var(--brand-wine),var(--brand-wine-deep)) !important; }
 .quick-view-backdrop { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 20px; background: rgba(27,13,19,.62); backdrop-filter: blur(8px); animation: qvFade .18s ease-out; }
 .quick-view-dialog { position: relative; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 22px; width: min(860px,100%); max-height: min(760px,calc(100dvh - 40px)); overflow-y: auto; padding: 20px; border: 1px solid rgba(255,255,255,.8); border-radius: 22px; background: #fff; box-shadow: 0 28px 90px rgba(24,8,15,.34); animation: qvRise .24s cubic-bezier(.2,.8,.2,1); }
-.quick-view-close { position: absolute; z-index: 2; top: 10px; right: 10px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: #f7edf0; color: var(--brand-wine); font-size: 24px; cursor: pointer; }
-.quick-view-photo { min-height: 330px; overflow: hidden; border-radius: 16px; background: #f7edf0; }
+.quick-view-close { position: absolute; z-index: 2; top: 10px; right: 10px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: #f8f7f7; color: var(--brand-wine); font-size: 24px; cursor: pointer; }
+.quick-view-photo { min-height: 330px; overflow: hidden; border-radius: 16px; background: #f8f7f7; }
 .quick-view-photo img { width: 100%; height: 100%; max-height: 500px; object-fit: cover; }
 .quick-view-photo span { display: grid; height: 100%; min-height: 330px; place-items: center; font-size: 44px; }
 .quick-view-content { align-self: center; min-width: 0; padding: 10px 4px; }

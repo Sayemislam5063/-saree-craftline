@@ -42,7 +42,7 @@ export default function CategorySection({ category, products }: any) {
         .category-section {
           padding: 40px 0;
           width: 100%;
-          border-bottom: 1px solid #f0e7eb;
+          border-bottom: 1px solid #f8f7f7;
         }
 
         .section-header {
@@ -78,7 +78,7 @@ export default function CategorySection({ category, products }: any) {
         }
 
         .product-count-badge {
-          background-color: #f7f2f3 !important; 
+          background-color: #f8f7f7 !important; 
           color: #541126 !important; 
           font-size: 13px;
           font-weight: 800;

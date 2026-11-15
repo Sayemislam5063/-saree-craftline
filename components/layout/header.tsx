@@ -17,7 +17,7 @@ const iconBoxStyle: React.CSSProperties = {
   placeItems: "center",
   border: "0",
   borderRadius: "13px",
-  background: "linear-gradient(135deg, #f7f1f4, #f0e5ec)",
+  background: "linear-gradient(135deg, #f8f7f7, #f8f7f7)",
   color: "#3b3035",
   textDecoration: "none",
   cursor: "pointer",
@@ -91,7 +91,7 @@ export default function Header() {
                 flexShrink: 0,
                 display: "block",
                 transition: "filter 0.2s ease",
-                filter: hovered === "logo" ? "drop-shadow(0 6px 12px rgba(154, 65, 109, 0.18))" : "none",
+                filter: hovered === "logo" ? "drop-shadow(0 6px 12px rgba(84, 17, 38, 0.18))" : "none",
               }}
             />
 
@@ -108,7 +108,7 @@ export default function Header() {
                   fontSize: "18px",
                   fontWeight: 900,
                   letterSpacing: "-0.3px",
-                  color: hovered === "logo" ? "#9a416d" : "#241d22",
+                  color: hovered === "logo" ? "#64172f" : "#241d22",
                   whiteSpace: "nowrap",
                   lineHeight: "1",
                   transition: "color 0.2s ease",
@@ -121,7 +121,7 @@ export default function Header() {
                 style={{
                   fontSize: "11px",
                   fontWeight: 600,
-                  color: "#9a7c88",
+                  color: "#806d74",
                   whiteSpace: "nowrap",
                   lineHeight: "1",
                 }}
@@ -165,8 +165,8 @@ export default function Header() {
               onMouseLeave={() => setHovered(null)}
               style={{
                 transform: hovered === "search" ? "scale(1.08) translateY(-1px)" : "scale(1)",
-                background: hovered === "search" ? "#a9416e" : "#7d3355",
-                boxShadow: hovered === "search" ? "0 4px 12px rgba(169, 65, 110, 0.3)" : "none",
+                background: hovered === "search" ? "#64172f" : "#3f0d20",
+                boxShadow: hovered === "search" ? "0 4px 12px rgba(84, 17, 38, 0.3)" : "none",
                 transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)"
               }}
             >
@@ -261,15 +261,15 @@ export default function Header() {
           max-width: 650px;
           height: 48px;
           background: #fff;
-          border: 1px solid #e2d8dd;
+          border: 1px solid #e5dfe1;
           border-radius: 999px;
           padding: 4px;
           margin: 0 20px;
           transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
         .search-bar-container:focus-within {
-          border-color: #a9416e;
-          box-shadow: 0 0 0 3px rgba(169, 65, 110, 0.1);
+          border-color: #64172f;
+          box-shadow: 0 0 0 3px rgba(84, 17, 38, 0.1);
         }
         .search-input {
           flex: 1;
@@ -287,7 +287,7 @@ export default function Header() {
         .search-divider {
           width: 1px;
           height: 24px;
-          background: #e2d8dd;
+          background: #e5dfe1;
         }
         .category-select {
           height: 100%;
@@ -315,7 +315,7 @@ export default function Header() {
           flex-shrink: 0;
           border: none;
           border-radius: 50%;
-          background: #7d3355;
+          background: #3f0d20;
           color: white;
           display: flex;
           align-items: center;
@@ -329,8 +329,8 @@ export default function Header() {
         
         /* CSS :hover এর বদলে is-hovered ক্লাস ব্যবহার করা হয়েছে যাতে Link-এ কাজ করে */
         .icon-btn.is-hovered { 
-          background: linear-gradient(135deg, #f3e7ed, #ebd5e2) !important; 
-          color: #9a416d !important; 
+          background: linear-gradient(135deg, #f8f7f7, #f8f7f7) !important; 
+          color: #64172f !important; 
           animation: iconPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, iconPulseHover 1.5s infinite 0.4s; 
         }
         .icon-btn.is-hovered svg { 
@@ -338,15 +338,15 @@ export default function Header() {
         }
         .icon-btn:active { transform: scale(0.9); }
         
-        @keyframes iconPulse { 0% { box-shadow: 0 0 0 0 rgba(154, 65, 109, 0.15); } 50% { box-shadow: 0 0 0 8px rgba(154, 65, 109, 0); } 100% { box-shadow: 0 0 0 0 rgba(154, 65, 109, 0); } }
+        @keyframes iconPulse { 0% { box-shadow: 0 0 0 0 rgba(84, 17, 38, 0.15); } 50% { box-shadow: 0 0 0 8px rgba(84, 17, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(84, 17, 38, 0); } }
         @keyframes iconPop { 0% { transform: scale(1); } 50% { transform: scale(1.15) translateY(-3px); } 100% { transform: scale(1) translateY(-2px); } }
-        @keyframes iconPulseHover { 0% { box-shadow: 0 0 0 0 rgba(154, 65, 109, 0.4); } 50% { box-shadow: 0 0 0 12px rgba(154, 65, 109, 0); } 100% { box-shadow: 0 0 0 0 rgba(154, 65, 109, 0); } }
+        @keyframes iconPulseHover { 0% { box-shadow: 0 0 0 0 rgba(84, 17, 38, 0.4); } 50% { box-shadow: 0 0 0 12px rgba(84, 17, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(84, 17, 38, 0); } }
         @keyframes iconWiggle { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-10deg); } 75% { transform: rotate(10deg); } }
 
         /* CART BADGE ANIMATION */
-        .cart-count { position: absolute; top: -5px; right: -5px; min-width: 20px; height: 20px; padding: 0 5px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: linear-gradient(135deg, #a9416e, #7d3355); color: #fff; border: 2px solid #fff; font-size: 10px; font-weight: 900; line-height: 1; pointer-events: none; box-shadow: 0 4px 10px rgba(154, 65, 109, 0.32); animation: badgePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, badgePulse 2s infinite 1s; }
+        .cart-count { position: absolute; top: -5px; right: -5px; min-width: 20px; height: 20px; padding: 0 5px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: linear-gradient(135deg, #64172f, #3f0d20); color: #fff; border: 2px solid #fff; font-size: 10px; font-weight: 900; line-height: 1; pointer-events: none; box-shadow: 0 4px 10px rgba(84, 17, 38, 0.32); animation: badgePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, badgePulse 2s infinite 1s; }
         @keyframes badgePop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
-        @keyframes badgePulse { 0% { box-shadow: 0 0 0 0 rgba(154, 65, 109, 0.5); } 50% { box-shadow: 0 0 0 6px rgba(154, 65, 109, 0); } 100% { box-shadow: 0 0 0 0 rgba(154, 65, 109, 0); } }
+        @keyframes badgePulse { 0% { box-shadow: 0 0 0 0 rgba(84, 17, 38, 0.5); } 50% { box-shadow: 0 0 0 6px rgba(84, 17, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(84, 17, 38, 0); } }
 
         /* RESPONSIVE */
         @media (max-width: 1024px) { 

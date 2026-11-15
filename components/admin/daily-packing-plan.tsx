@@ -246,29 +246,29 @@ export default function DailyPackingPlan({ orders }: { orders: OrderRecord[]; on
       </div>
 
       <style jsx>{`
-        .daily-packing-card { background: linear-gradient(145deg,#fff 0%,#fffafd 100%); border: 1px solid #eadde4; border-radius: 18px; padding: 20px; margin: 0 0 20px; box-shadow: 0 10px 28px rgba(45,25,38,.055); color: #392f35; }
+        .daily-packing-card { background: linear-gradient(145deg,#fff 0%,#ffffff 100%); border: 1px solid #e5dfe1; border-radius: 18px; padding: 20px; margin: 0 0 20px; box-shadow: 0 10px 28px rgba(45,25,38,.055); color: #392f35; }
         .daily-packing-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
-        .daily-packing-eyebrow { display: inline-flex; color: #a04f72; background: #fbf0f5; border: 1px solid #f1dce6; border-radius: 999px; padding: 5px 9px; font-size: 9px; letter-spacing: 1.1px; font-weight: 900; margin-bottom: 8px; }
+        .daily-packing-eyebrow { display: inline-flex; color: #64172f; background: #f8f7f7; border: 1px solid #f8f7f7; border-radius: 999px; padding: 5px 9px; font-size: 9px; letter-spacing: 1.1px; font-weight: 900; margin-bottom: 8px; }
         .daily-packing-heading h2 { margin: 0; color: #30252c; font-size: 18px; font-weight: 850; letter-spacing: -.2px; }
         .daily-packing-heading p { color: #91838b; font-size: 11px; margin: 6px 0 0; }
         .daily-packing-date { display: grid; gap: 6px; color: #786b73; font-size: 10px; font-weight: 800; flex: 0 0 auto; }
-        .daily-packing-date input { height: 40px; border: 1px solid #e7d9e0; border-radius: 10px; padding: 0 11px; color: #4b3b43; background: #fff; font-size: 12px; outline: none; transition: border-color .15s,box-shadow .15s; }
-        .daily-packing-date input:focus { border-color: #b14f79; box-shadow: 0 0 0 3px rgba(177,79,121,.1); }
+        .daily-packing-date input { height: 40px; border: 1px solid #e5dfe1; border-radius: 10px; padding: 0 11px; color: #4b3b43; background: #fff; font-size: 12px; outline: none; transition: border-color .15s,box-shadow .15s; }
+        .daily-packing-date input:focus { border-color: #64172f; box-shadow: 0 0 0 3px rgba(84,17,38,.1); }
         .daily-packing-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; margin-bottom: 14px; }
         .daily-packing-stats > div { display: grid; gap: 7px; padding: 13px 14px; border: 1px solid #eee4e9; border-radius: 12px; background: rgba(255,255,255,.85); min-width: 0; }
         .daily-packing-stats span { color: #978992; font-size: 9px; letter-spacing: .75px; font-weight: 900; }
         .daily-packing-stats strong { color: #382832; font-size: 21px; line-height: 1.1; white-space: nowrap; }
         .daily-packing-stats strong small { color: #8b7d85; font-size: 10px; font-weight: 700; white-space: normal; }
         .daily-packing-stats strong em { color: #168c68; font-style: normal; }
-        .daily-packing-empty { display: grid; justify-items: center; gap: 6px; padding: 20px 12px; border: 1px dashed #eadfe5; border-radius: 11px; color: #796b73; text-align: center; }
+        .daily-packing-empty { display: grid; justify-items: center; gap: 6px; padding: 20px 12px; border: 1px dashed #e5dfe1; border-radius: 11px; color: #796b73; text-align: center; }
         .daily-packing-empty span { font-size: 23px; }
         .daily-packing-empty strong { font-size: 12px; }
-        .daily-packing-empty small { color: #a3959d; font-size: 10px; }
+        .daily-packing-empty small { color: #806d74; font-size: 10px; }
         .daily-packing-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
-        .daily-packing-product { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 12px; border: 1px solid #eee5e9; border-radius: 12px; background: #fff; transition: border-color .15s,box-shadow .15s,transform .15s; }
-        .daily-packing-product:hover { border-color: #dfc2d0; box-shadow: 0 5px 14px rgba(45,25,38,.045); transform: translateY(-1px); }
+        .daily-packing-product { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 12px; border: 1px solid #e5dfe1; border-radius: 12px; background: #fff; transition: border-color .15s,box-shadow .15s,transform .15s; }
+        .daily-packing-product:hover { border-color: #d2c5ca; box-shadow: 0 5px 14px rgba(45,25,38,.045); transform: translateY(-1px); }
         .daily-packing-product.is-all-done { border-color: #ccebdd; background: #fbfffd; }
-        .daily-packing-image { width: 56px; height: 66px; flex: 0 0 56px; overflow: hidden; border: 1px solid #eee2e8; border-radius: 9px; background: #faf5f7; display: grid; place-items: center; color: #aa8d9b; font-size: 20px; }
+        .daily-packing-image { width: 56px; height: 66px; flex: 0 0 56px; overflow: hidden; border: 1px solid #e5dfe1; border-radius: 9px; background: #f8f7f7; display: grid; place-items: center; color: #aa8d9b; font-size: 20px; }
         .daily-packing-image img { width: 100%; height: 100%; object-fit: cover; }
         .daily-packing-product-info { flex: 1; min-width: 0; display: grid; gap: 5px; }
         .daily-packing-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
@@ -280,10 +280,10 @@ export default function DailyPackingPlan({ orders }: { orders: OrderRecord[]; on
         .daily-packing-counts b { color: #342831; }
         .packing-done-text b { color: #168c68; }
         .packing-remaining-text b { color: #b45b28; }
-        .daily-packing-progress { height: 4px; border-radius: 8px; background: #f1e9ed; overflow: hidden; }
+        .daily-packing-progress { height: 4px; border-radius: 8px; background: #f8f7f7; overflow: hidden; }
         .daily-packing-progress span { display: block; height: 100%; background: #28a77c; border-radius: inherit; transition: width .2s ease; }
         .daily-packing-note { margin-top: 10px; color: #9b8d95; font-size: 9px; line-height: 1.5; }
-        .daily-packing-note { padding: 10px 12px; border-radius: 9px; background: #fbf7f9; }
+        .daily-packing-note { padding: 10px 12px; border-radius: 9px; background: #f8f7f7; }
         @media (max-width: 950px) { .daily-packing-list { grid-template-columns: 1fr; } }
         @media (max-width: 700px) { .daily-packing-card { padding: 15px; border-radius: 14px; } .daily-packing-heading { align-items: stretch; flex-direction: column; } .daily-packing-heading h2 { font-size: 16px; } .daily-packing-date { width: 100%; } .daily-packing-date input { width: 100%; } .daily-packing-stats { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; } .daily-packing-stats > div { padding: 10px; } .daily-packing-stats strong { font-size: 18px; } }
       `}</style>

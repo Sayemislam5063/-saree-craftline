@@ -252,7 +252,7 @@ const deleteCategory = async (id: string) => {
           background:
             radial-gradient(
               circle at top left,
-              #fdf4f8 0%,
+              #f8f7f7 0%,
               #f8f5f7 40%,
               #f4f1f5 100%
             );
@@ -342,24 +342,24 @@ const deleteCategory = async (id: string) => {
           border-radius: 13px;
           background: linear-gradient(
             135deg,
-            #d66f99,
-            #b14f79
+            #64172f,
+            #64172f
           );
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 15px;
           font-weight: 800;
-          box-shadow: 0 8px 20px rgba(177,79,121,0.25);
+          box-shadow: 0 8px 20px rgba(84,17,38,0.25);
           animation: logoGlow 4s ease-in-out infinite;
         }
 
         @keyframes logoGlow {
           0%, 100% {
-            box-shadow: 0 8px 20px rgba(177,79,121,0.25);
+            box-shadow: 0 8px 20px rgba(84,17,38,0.25);
           }
           50% {
-            box-shadow: 0 12px 28px rgba(177,79,121,0.45);
+            box-shadow: 0 12px 28px rgba(84,17,38,0.45);
           }
         }
 
@@ -419,11 +419,11 @@ const deleteCategory = async (id: string) => {
           color: white;
           background: linear-gradient(
             90deg,
-            rgba(177,79,121,0.34),
-            rgba(177,79,121,0.15)
+            rgba(84,17,38,0.34),
+            rgba(84,17,38,0.15)
           );
           box-shadow:
-            inset 3px 0 0 #d56e98,
+            inset 3px 0 0 #64172f,
             0 8px 20px rgba(182, 93, 131, 0.15);
         }
 
@@ -492,7 +492,7 @@ const deleteCategory = async (id: string) => {
         }
 
         .eyebrow {
-          color: #b14f79;
+          color: #64172f;
           font-size: 9px;
           letter-spacing: 1.7px;
           font-weight: 900;
@@ -514,7 +514,7 @@ const deleteCategory = async (id: string) => {
           height: 43px;
           padding: 0 18px;
           border-radius: 11px;
-          background: linear-gradient(135deg, #b14f79, #a4446d);
+          background: linear-gradient(135deg, #64172f, #64172f);
           color: white;
           text-decoration: none;
           display: flex;
@@ -522,7 +522,7 @@ const deleteCategory = async (id: string) => {
           gap: 7px;
           font-size: 12px;
           font-weight: 800;
-          box-shadow: 0 8px 20px rgba(177,79,121,0.22);
+          box-shadow: 0 8px 20px rgba(84,17,38,0.22);
           transition:
             transform 0.3s cubic-bezier(0.34,1.56,0.64,1),
             box-shadow 0.3s ease;
@@ -530,7 +530,7 @@ const deleteCategory = async (id: string) => {
 
         .add-button:hover {
           transform: translateY(-3px);
-          box-shadow: 0 14px 28px rgba(177,79,121,0.32);
+          box-shadow: 0 14px 28px rgba(84,17,38,0.32);
         }
 
         /* =========================
@@ -560,7 +560,7 @@ const deleteCategory = async (id: string) => {
 
         .search-box {
           height: 41px;
-          border: 1px solid #eadfe5;
+          border: 1px solid #e5dfe1;
           border-radius: 11px;
           display: flex;
           align-items: center;
@@ -573,7 +573,7 @@ const deleteCategory = async (id: string) => {
         }
 
         .search-box:focus-within {
-          border-color: #c6819e;
+          border-color: #64172f;
           box-shadow: 0 0 0 3px rgba(198,129,158,0.12);
         }
 
@@ -628,7 +628,7 @@ const deleteCategory = async (id: string) => {
         .section-label {
           font-size: 8px;
           letter-spacing: 1.5px;
-          color: #b14f79;
+          color: #64172f;
           font-weight: 900;
           margin-bottom: 5px;
         }
@@ -644,8 +644,8 @@ const deleteCategory = async (id: string) => {
           font-weight: 700;
           padding: 6px 12px;
           border-radius: 20px;
-          background: #f8eaf0;
-          color: #a4446d;
+          background: #f8f7f7;
+          color: #64172f;
         }
 
         /* =========================
@@ -667,7 +667,7 @@ const deleteCategory = async (id: string) => {
           width: 65px;
           height: 65px;
           border-radius: 18px;
-          background: linear-gradient(135deg, #f8eaf0, #fbdcec);
+          background: linear-gradient(135deg, #f8f7f7, #f8f7f7);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -702,14 +702,14 @@ const deleteCategory = async (id: string) => {
           height: 41px;
           padding: 0 17px;
           border-radius: 10px;
-          background: linear-gradient(135deg, #b14f79, #a4446d);
+          background: linear-gradient(135deg, #64172f, #64172f);
           color: white;
           text-decoration: none;
           display: flex;
           align-items: center;
           font-size: 11px;
           font-weight: 800;
-          box-shadow: 0 7px 17px rgba(177,79,121,0.18);
+          box-shadow: 0 7px 17px rgba(84,17,38,0.18);
           transition:
             transform 0.3s cubic-bezier(0.34,1.56,0.64,1),
             box-shadow 0.3s ease;
@@ -717,7 +717,7 @@ const deleteCategory = async (id: string) => {
 
         .empty-button:hover {
           transform: translateY(-3px);
-          box-shadow: 0 14px 26px rgba(177,79,121,0.28);
+          box-shadow: 0 14px 26px rgba(84,17,38,0.28);
         }
 
         /* =========================
@@ -761,7 +761,7 @@ const deleteCategory = async (id: string) => {
         }
 
         .category-row:hover {
-          border-color: #e2c4d1;
+          border-color: #e5dfe1;
           transform: translateY(-3px);
           box-shadow: 0 12px 24px rgba(45, 25, 38, 0.08);
         }
@@ -791,7 +791,7 @@ const deleteCategory = async (id: string) => {
         }
 
         .category-image-placeholder {
-          background: linear-gradient(135deg, #f8eaf0, #fbdcec);
+          background: linear-gradient(135deg, #f8f7f7, #f8f7f7);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -868,23 +868,23 @@ const deleteCategory = async (id: string) => {
         }
 
         .edit-category-button {
-          background: #f3e8ff;
+          background: #f8f7f7;
           color: #7c3f8f;
         }
 
         .edit-category-button:hover {
-          background: #e8d5f5;
+          background: #f8f7f7;
           transform: translateY(-2px);
           box-shadow: 0 8px 16px rgba(124,63,143,0.15);
         }
 
         .delete-category-button {
-          background: #fbe9ed;
-          color: #a94f6f;
+          background: #f8f7f7;
+          color: #64172f;
         }
 
         .delete-category-button:hover {
-          background: #f4d7df;
+          background: #f8f7f7;
           transform: translateY(-2px);
           box-shadow: 0 8px 16px rgba(169,79,111,0.15);
         }
@@ -899,7 +899,7 @@ const deleteCategory = async (id: string) => {
           width: 11px;
           height: 11px;
           border: 2px solid rgba(169,79,111,0.25);
-          border-top-color: #a94f6f;
+          border-top-color: #64172f;
           border-radius: 50%;
           animation: btnSpin 0.7s linear infinite;
         }
@@ -928,8 +928,8 @@ const deleteCategory = async (id: string) => {
           width: 42px;
           height: 42px;
           margin-bottom: 16px;
-          border: 4px solid #f1dce5;
-          border-top-color: #b14f79;
+          border: 4px solid #e5dfe1;
+          border-top-color: #64172f;
           border-radius: 50%;
           animation: category-spin 0.8s linear infinite;
         }

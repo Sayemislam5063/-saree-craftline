@@ -419,7 +419,7 @@ const handleSave = async () => {
           background:
             radial-gradient(
               circle at top left,
-              #fdf4f8 0%,
+              #f8f7f7 0%,
               #f8f5f7 40%,
               #f4f1f5 100%
             );
@@ -510,8 +510,8 @@ const handleSave = async () => {
           border-radius: 13px;
           background: linear-gradient(
             135deg,
-            #d66f99,
-            #b14f79
+            #64172f,
+            #64172f
           );
           display: flex;
           align-items: center;
@@ -519,16 +519,16 @@ const handleSave = async () => {
           font-size: 15px;
           font-weight: 800;
           box-shadow:
-            0 8px 20px rgba(177,79,121,0.25);
+            0 8px 20px rgba(84,17,38,0.25);
           animation: logoGlow 4s ease-in-out infinite;
         }
 
         @keyframes logoGlow {
           0%, 100% {
-            box-shadow: 0 8px 20px rgba(177,79,121,0.25);
+            box-shadow: 0 8px 20px rgba(84,17,38,0.25);
           }
           50% {
-            box-shadow: 0 12px 28px rgba(177,79,121,0.45);
+            box-shadow: 0 12px 28px rgba(84,17,38,0.45);
           }
         }
 
@@ -589,11 +589,11 @@ const handleSave = async () => {
           color: white;
           background: linear-gradient(
             90deg,
-            rgba(177,79,121,0.34),
-            rgba(177,79,121,0.15)
+            rgba(84,17,38,0.34),
+            rgba(84,17,38,0.15)
           );
           box-shadow:
-            inset 3px 0 0 #d56e98,
+            inset 3px 0 0 #64172f,
             0 8px 20px rgba(182, 93, 131, 0.15);
         }
 
@@ -660,7 +660,7 @@ const handleSave = async () => {
         }
 
         .eyebrow {
-          color: #b14f79;
+          color: #64172f;
           font-size: 9px;
           letter-spacing: 1.7px;
           font-weight: 900;
@@ -682,7 +682,7 @@ const handleSave = async () => {
         }
 
         .back-link:hover {
-          color: #b14f79;
+          color: #64172f;
         }
 
         .back-link:hover .back-arrow {
@@ -753,7 +753,7 @@ const handleSave = async () => {
           gap: 14px;
           padding-bottom: 18px;
           border-bottom:
-            1px solid #f0e9ed;
+            1px solid #f8f7f7;
           margin-bottom: 20px;
         }
 
@@ -762,7 +762,7 @@ const handleSave = async () => {
           height: 42px;
           flex-shrink: 0;
           border-radius: 12px;
-          background: linear-gradient(135deg, #f8eaf0, #fbdcec);
+          background: linear-gradient(135deg, #f8f7f7, #f8f7f7);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -777,7 +777,7 @@ const handleSave = async () => {
         .section-label {
           font-size: 8px;
           letter-spacing: 1.5px;
-          color: #b14f79;
+          color: #64172f;
           font-weight: 900;
           margin-bottom: 5px;
         }
@@ -823,7 +823,7 @@ const handleSave = async () => {
         }
 
         .input-wrap:focus-within .input-icon {
-          color: #b14f79;
+          color: #64172f;
         }
 
         .field input {
@@ -843,9 +843,9 @@ const handleSave = async () => {
         }
 
         .field input:focus {
-          border-color: #c66b91;
+          border-color: #64172f;
           box-shadow:
-            0 0 0 3px rgba(177,79,121,0.12);
+            0 0 0 3px rgba(84,17,38,0.12);
         }
 
         .field input::placeholder {
@@ -869,7 +869,7 @@ const handleSave = async () => {
           text-align: center;
           cursor: pointer;
           overflow: hidden;
-          background: #fdfbfc;
+          background: #ffffff;
           transition:
             border-color 0.3s ease,
             background 0.3s ease,
@@ -877,8 +877,8 @@ const handleSave = async () => {
         }
 
         .upload-area:hover {
-          border-color: #b14f79;
-          background: #fffafd;
+          border-color: #64172f;
+          background: #ffffff;
         }
 
         .upload-area:hover .upload-icon {
@@ -889,7 +889,7 @@ const handleSave = async () => {
           width: 58px;
           height: 58px;
           border-radius: 16px;
-          background: linear-gradient(135deg, #f8eaf0, #fbdcec);
+          background: linear-gradient(135deg, #f8f7f7, #f8f7f7);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -905,7 +905,7 @@ const handleSave = async () => {
         }
 
         .upload-text {
-          color: #a3949c;
+          color: #806d74;
           font-size: 10px;
         }
 
@@ -985,7 +985,7 @@ const handleSave = async () => {
         }
 
         .cancel-button:hover {
-          background: #faf6f8;
+          background: #f8f7f7;
           border-color: #d5c2cc;
           transform: translateY(-2px);
           box-shadow:
@@ -994,16 +994,16 @@ const handleSave = async () => {
 
         .save-button {
           border: 0;
-          background: linear-gradient(135deg, #b14f79, #a4446d);
+          background: linear-gradient(135deg, #64172f, #64172f);
           color: white;
           box-shadow:
-            0 8px 20px rgba(177,79,121,0.22);
+            0 8px 20px rgba(84,17,38,0.22);
         }
 
         .save-button:hover:not(:disabled) {
           transform: translateY(-3px);
           box-shadow:
-            0 14px 28px rgba(177,79,121,0.32);
+            0 14px 28px rgba(84,17,38,0.32);
         }
 
         .save-button:disabled {
@@ -1080,8 +1080,8 @@ const handleSave = async () => {
           height: 44px;
           margin: 0 auto 16px;
           border:
-            4px solid #f1dce5;
-          border-top-color: #b14f79;
+            4px solid #e5dfe1;
+          border-top-color: #64172f;
           border-radius: 50%;
           animation:
             category-spin 0.8s linear infinite;

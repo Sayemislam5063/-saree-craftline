@@ -452,9 +452,9 @@ export default function ProductCard({
                 borderRadius: "12px",
                 boxSizing: "border-box",
                 background:
-                  "linear-gradient(135deg, #f1ecef, #eae0e5)",
-                color: "#9a858e",
-                border: "1px solid #e2d8dd",
+                  "linear-gradient(135deg, #f8f7f7, #eae0e5)",
+                color: "#806d74",
+                border: "1px solid #e5dfe1",
                 fontSize: "12px",
                 fontWeight: 900,
                 cursor: "not-allowed",
@@ -481,16 +481,16 @@ export default function ProductCard({
                   gap: "6px",
                   borderRadius: "12px",
                   boxSizing: "border-box",
-                  border: "1px solid #ecd4e0",
+                  border: "1px solid #e5dfe1",
                   background:
-                    "linear-gradient(135deg, #f9ecf2, #f0dce8)",
-                  color: "#63364e",
+                    "linear-gradient(135deg, #f8f7f7, #f8f7f7)",
+                  color: "#541126",
                   fontSize: "12px",
                   fontWeight: 800,
                   textDecoration: "none",
                   cursor: "pointer",
                   boxShadow:
-                    "0 2px 6px rgba(160, 74, 114, 0.08)",
+                    "0 2px 6px rgba(84, 17, 38, 0.08)",
                   transition:
                     "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, background 0.25s ease",
                   animation:
@@ -606,7 +606,7 @@ export default function ProductCard({
           overflow: hidden;
           border-radius: 20px;
           background: #ffffff;
-          border: 1px solid #ead9df;
+          border: 1px solid #e5dfe1;
           box-shadow:
             0 8px 32px
               rgba(83, 53, 66, 0.08),
@@ -633,7 +633,7 @@ export default function ProductCard({
             0 1px 0
               rgba(255, 255, 255, 0.95)
               inset;
-          border-color: #c8a3b0;
+          border-color: #a98290;
         }
 
         /* IMAGE */
@@ -651,8 +651,8 @@ export default function ProductCard({
           background:
             linear-gradient(
               145deg,
-              #f8dde7,
-              #ebe3ff
+              #f8f7f7,
+              #f8f7f7
             );
         }
 
@@ -816,7 +816,7 @@ export default function ProductCard({
         .wishlist-btn.active {
           background:
             rgba(255, 235, 243, 0.95);
-          color: #e03b6d;
+          color: #64172f;
         }
 
         /* INFO */
@@ -875,7 +875,7 @@ export default function ProductCard({
         }
 
         .rating-star {
-          color: #ddd0d7;
+          color: #cfc3c8;
           font-size: 13px;
           line-height: 1;
         }
@@ -905,9 +905,9 @@ export default function ProductCard({
           padding:
             4px 10px;
           border-radius: 20px;
-          background: #fdf3f8;
+          background: #f8f7f7;
           border:
-            1px solid #f5d9e7;
+            1px solid #f8f7f7;
           text-decoration: none;
           cursor: pointer;
           transition:
@@ -926,8 +926,8 @@ export default function ProductCard({
         .review-pill-link:hover {
           transform:
             translateY(-1px);
-          background: #fce7f1;
-          border-color: #ecbfd4;
+          background: #f8f7f7;
+          border-color: #a98290;
           box-shadow:
             0 6px 14px
               rgba(
@@ -949,13 +949,13 @@ export default function ProductCard({
         }
 
         .review-pill-star {
-          color: #e4a6c1;
+          color: #a98290;
           font-size: 11px;
           line-height: 1;
         }
 
         .review-pill-text {
-          color: #a9416e;
+          color: #64172f;
           font-size: 10px;
           font-weight: 800;
           letter-spacing: 0.2px;
@@ -972,7 +972,7 @@ export default function ProductCard({
 
         .price {
           font-size: 17px;
-          color: #7b55b8;
+          color: #64172f;
           font-weight: 800;
           letter-spacing: -0.3px;
         }
@@ -1007,14 +1007,14 @@ export default function ProductCard({
 
         .cart-button {
           border:
-            1px solid #ecd4e0;
+            1px solid #e5dfe1;
           background:
             linear-gradient(
               135deg,
-              #f9ecf2,
-              #f0dce8
+              #f8f7f7,
+              #f8f7f7
             );
-          color: #63364e;
+          color: #541126;
           box-shadow:
             0 2px 6px
               rgba(
@@ -1060,10 +1060,10 @@ export default function ProductCard({
           justify-content: center;
           border-radius: 12px;
           box-sizing: border-box;
-          background: #f1ecef;
-          color: #9a858e;
+          background: #f8f7f7;
+          color: #806d74;
           border:
-            1px solid #e2d8dd;
+            1px solid #e5dfe1;
           font-size: 12px;
           font-weight: 900;
           cursor: not-allowed;

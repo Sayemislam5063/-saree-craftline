@@ -313,7 +313,7 @@ export default function AllProductsPage() {
         }
 
         .breadcrumb a:hover {
-          color: #9c426b; /* Lighter Maroon on hover */
+          color: #64172f; /* Lighter Maroon on hover */
           text-decoration: underline;
         }
 

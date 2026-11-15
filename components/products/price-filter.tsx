@@ -144,7 +144,7 @@ export default function PriceFilter({
         .filter-eyebrow {
           display: inline-block;
           margin-bottom: 5px;
-          color: #a14a73;
+          color: #64172f;
           font-size: 10px;
           font-weight: 900;
           letter-spacing: 1.3px;
@@ -204,7 +204,7 @@ export default function PriceFilter({
 
         .input-wrap span {
           margin-right: 7px;
-          color: #a14a73;
+          color: #64172f;
           font-size: 13px;
           font-weight: 900;
         }
@@ -260,27 +260,27 @@ export default function PriceFilter({
           background:
             linear-gradient(
               135deg,
-              #b14f79,
-              #963f68
+              #64172f,
+              #64172f
             );
           color: #fff;
           box-shadow:
             0 8px 20px
-              rgba(177, 79, 121, 0.22);
+              rgba(84, 17, 38, 0.22);
         }
 
         .filter-button:hover {
           transform: translateY(-2px);
           box-shadow:
             0 12px 25px
-              rgba(177, 79, 121, 0.3);
+              rgba(84, 17, 38, 0.3);
         }
 
         .reset-button {
           border: 1px solid
             rgba(99, 54, 78, 0.14);
           background: #fff;
-          color: #63364e;
+          color: #541126;
         }
 
         .reset-button:hover {

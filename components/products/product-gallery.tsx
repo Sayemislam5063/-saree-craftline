@@ -92,8 +92,8 @@ export default function ProductGallery({
             ),
             linear-gradient(
               145deg,
-              #f8dde7,
-              #ebe3ff
+              #f8f7f7,
+              #f8f7f7
             );
           display: grid;
           place-items: center;
@@ -135,7 +135,7 @@ export default function ProductGallery({
           border: 1px solid rgba(93, 67, 77, 0.1);
           border-radius: 14px;
           overflow: hidden;
-          background: #f8edf3;
+          background: #f8f7f7;
           cursor: pointer;
           display: grid;
           place-items: center;
@@ -143,7 +143,7 @@ export default function ProductGallery({
         }
 
         .thumbnail.active {
-          border: 2px solid #9a416d;
+          border: 2px solid #64172f;
         }
 
         .thumbnail img {

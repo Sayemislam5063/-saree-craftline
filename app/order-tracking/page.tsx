@@ -39,7 +39,7 @@ export default function TrackOrderPage() {
   // স্ট্যাটাস অনুযায়ী সুন্দর টেক্সট এবং কালার
   const getStatusInfo = (status: string, fraudStatus: string) => {
     if (fraudStatus === "blocked") {
-      return { text: "বাতিল (Fraud)", color: "#d32f2f", bg: "#fee2e2", icon: "🚫" };
+      return { text: "বাতিল (Fraud)", color: "#64172f", bg: "#fee2e2", icon: "🚫" };
     }
     switch (status) {
       case "pending":
@@ -50,9 +50,9 @@ export default function TrackOrderPage() {
         return { text: "ডেলিভারি সম্পন্ন", color: "#155724", bg: "#d4edda", icon: "✅" };
       case "cancelled":
       case "returned":
-        return { text: "বাতিল / ফেরত", color: "#721c24", bg: "#f8d7da", icon: "❌" };
+        return { text: "বাতিল / ফেরত", color: "#721c24", bg: "#f8f7f7", icon: "❌" };
       default:
-        return { text: "প্রসেসিং হচ্ছে", color: "#6c757d", bg: "#f1edf0", icon: "📦" };
+        return { text: "প্রসেসিং হচ্ছে", color: "#6c757d", bg: "#f8f7f7", icon: "📦" };
     }
   };
 
@@ -142,7 +142,7 @@ export default function TrackOrderPage() {
         .track-page {
           min-height: 80vh;
           padding: 40px 20px 80px;
-          background: radial-gradient(circle at top left, rgba(255, 230, 239, 0.6), transparent 40%), #fff;
+          background: radial-gradient(circle at top left, rgba(84, 17, 38, 0.6), transparent 40%), #fff;
           font-family: "Inter", sans-serif;
         }
         .container {
@@ -156,7 +156,7 @@ export default function TrackOrderPage() {
         .back-link {
           display: inline-block;
           margin-bottom: 20px;
-          color: #a9416e;
+          color: #64172f;
           text-decoration: none;
           font-size: 13px;
           font-weight: 700;
@@ -180,14 +180,14 @@ export default function TrackOrderPage() {
           padding: 20px;
           border-radius: 20px;
           box-shadow: 0 10px 30px rgba(83, 53, 66, 0.08);
-          border: 1px solid #eadde3;
+          border: 1px solid #e5dfe1;
         }
         .input-group {
           flex: 1;
           display: flex;
           align-items: center;
-          background: #fdfafb;
-          border: 1px solid #eadfe5;
+          background: #ffffff;
+          border: 1px solid #e5dfe1;
           border-radius: 12px;
           padding: 0 15px;
         }
@@ -207,7 +207,7 @@ export default function TrackOrderPage() {
         .search-form button {
           height: 50px;
           padding: 0 30px;
-          background: #a9416e;
+          background: #64172f;
           color: white;
           border: none;
           border-radius: 12px;
@@ -218,7 +218,7 @@ export default function TrackOrderPage() {
           white-space: nowrap;
         }
         .search-form button:hover:not(:disabled) {
-          background: #8f345b;
+          background: #64172f;
           transform: translateY(-2px);
         }
         .search-form button:disabled {
@@ -233,7 +233,7 @@ export default function TrackOrderPage() {
           background: white;
           padding: 40px 20px;
           border-radius: 20px;
-          border: 1px dashed #d9b8c8;
+          border: 1px dashed #a98290;
         }
         .empty-icon {
           font-size: 40px;
@@ -256,7 +256,7 @@ export default function TrackOrderPage() {
         }
         .order-card {
           background: white;
-          border: 1px solid #eadfe5;
+          border: 1px solid #e5dfe1;
           border-radius: 16px;
           margin-bottom: 15px;
           overflow: hidden;
@@ -264,8 +264,8 @@ export default function TrackOrderPage() {
         }
         .order-header {
           padding: 15px 20px;
-          background: #fdfafb;
-          border-bottom: 1px solid #eadfe5;
+          background: #ffffff;
+          border-bottom: 1px solid #e5dfe1;
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -276,7 +276,7 @@ export default function TrackOrderPage() {
           display: block;
           font-size: 13px;
           font-weight: 800;
-          color: #a9416e;
+          color: #64172f;
           margin-bottom: 3px;
         }
         .order-date {
@@ -318,7 +318,7 @@ export default function TrackOrderPage() {
         }
         .order-total strong {
           font-size: 18px;
-          color: #a9416e;
+          color: #64172f;
           font-weight: 900;
         }
         .tracking-info {

@@ -9,8 +9,8 @@ export default function Spinner() {
         .spinner {
           width: 40px;
           height: 40px;
-          border: 4px solid #f1dce5;
-          border-top-color: #7d3355;
+          border: 4px solid #e5dfe1;
+          border-top-color: #3f0d20;
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
         }

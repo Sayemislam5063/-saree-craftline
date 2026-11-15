@@ -56,7 +56,7 @@ export default function CategoryBubble({
           margin: 0 auto 9px;
           overflow: hidden;
           border-radius: 50%;
-          background: linear-gradient(145deg, #fff0f5, #f0eaff);
+          background: linear-gradient(145deg, #f8f7f7, #f8f7f7);
         }
 
         .category-image {

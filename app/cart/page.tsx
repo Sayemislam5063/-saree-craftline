@@ -30,7 +30,7 @@ export default function CartPage() {
             margin: "0 auto",
             textAlign: "center",
             padding: "55px 20px",
-            border: "1px solid #eee3e8",
+            border: "1px solid #e5dfe1",
             borderRadius: 24,
             background: "#fff",
             boxShadow: "0 15px 40px rgba(60,30,45,0.06)",
@@ -193,7 +193,7 @@ export default function CartPage() {
                     gap: 14,
                     alignItems: "center",
                     padding: 12,
-                    border: "1px solid #eee5e9",
+                    border: "1px solid #e5dfe1",
                     borderRadius: 18,
                     background: "#fff",
                     boxShadow:
@@ -209,7 +209,7 @@ export default function CartPage() {
                       overflow: "hidden",
                       flexShrink: 0,
                       background:
-                        "linear-gradient(135deg, #fcf4f6, #f2e4e9)", // Maroon tint placeholder
+                        "linear-gradient(135deg, #f8f7f7, #f8f7f7)", // Maroon tint placeholder
                     }}
                   >
                     {image ? (
@@ -299,7 +299,7 @@ export default function CartPage() {
                         alignItems: "center",
                         width: "fit-content",
                         marginTop: 9,
-                        border: "1px solid #e8dce2",
+                        border: "1px solid #e5dfe1",
                         borderRadius: 10,
                         overflow: "hidden",
                       }}
@@ -318,7 +318,7 @@ export default function CartPage() {
                           width: 34,
                           height: 32,
                           border: 0,
-                          background: "#faf5f7", // Soft maroon tint
+                          background: "#f8f7f7", // Soft maroon tint
                           color: "#3d3036",
                           fontSize: 17,
                           cursor:
@@ -362,7 +362,7 @@ export default function CartPage() {
                           width: 34,
                           height: 32,
                           border: 0,
-                          background: "#faf5f7", // Soft maroon tint
+                          background: "#f8f7f7", // Soft maroon tint
                           color: "#3d3036",
                           fontSize: 17,
                           cursor:
@@ -432,7 +432,7 @@ export default function CartPage() {
           {/* ORDER SUMMARY */}
           <aside
             style={{
-              border: "1px solid #eee5e9",
+              border: "1px solid #e5dfe1",
               borderRadius: 20,
               background: "#fff",
               padding: 20,
@@ -492,7 +492,7 @@ export default function CartPage() {
             <div
               style={{
                 height: 1,
-                background: "#eee5e9",
+                background: "#e5dfe1",
                 margin: "4px 0 17px",
               }}
             />
@@ -560,7 +560,7 @@ export default function CartPage() {
                 alignItems: "center",
                 justifyContent: "center",
                 borderRadius: 14,
-                border: "1px solid #d1bcc5", // Maroon tinted border
+                border: "1px solid #a98290", // Maroon tinted border
                 background: "#fff",
                 color: "#7D3355", // Maroon text
                 textDecoration: "none",

@@ -18,7 +18,7 @@ export default function Button({ children, variant = "primary", className = "", 
           justify-content: center;
         }
         .custom-btn.primary {
-          background: #7d3355;
+          background: #3f0d20;
           color: white;
         }
         .custom-btn.primary:hover {
@@ -28,11 +28,11 @@ export default function Button({ children, variant = "primary", className = "", 
         }
         .custom-btn.outline {
           background: transparent;
-          color: #7d3355;
-          border: 1px solid #7d3355;
+          color: #3f0d20;
+          border: 1px solid #3f0d20;
         }
         .custom-btn.outline:hover {
-          background: #f7e6ef;
+          background: #f8f7f7;
         }
       `}</style>
     </button>

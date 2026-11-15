@@ -376,7 +376,7 @@ export default function CategoryPage() {
           background:
             radial-gradient(
               circle at top left,
-              rgba(255, 230, 239, 0.55),
+              rgba(84, 17, 38, 0.55),
               transparent 30%
             ),
             #fff;
@@ -419,7 +419,7 @@ export default function CategoryPage() {
 
         .eyebrow {
           margin: 0 0 8px;
-          color: #9a416d;
+          color: #64172f;
           font-size: 11px;
           font-weight: 900;
           letter-spacing: 1.5px;
@@ -444,7 +444,7 @@ export default function CategoryPage() {
           flex: 0 0 auto;
           padding: 9px 13px;
           border-radius: 999px;
-          background: #faeef4;
+          background: #f8f7f7;
           color: #8b3d63;
           font-size: 12px;
           font-weight: 800;

@@ -72,7 +72,7 @@ export default function PolicyPage() {
         .policy-page {
           min-height: 80vh;
           padding: 50px 20px 80px;
-          background: radial-gradient(circle at top left, rgba(255, 230, 239, 0.5), transparent 40%), #faf7f8;
+          background: radial-gradient(circle at top left, rgba(84, 17, 38, 0.5), transparent 40%), #f8f7f7;
           font-family: "Inter", sans-serif;
         }
         .policy-container {
@@ -82,7 +82,7 @@ export default function PolicyPage() {
         .back-link {
           display: inline-block;
           margin-bottom: 25px;
-          color: #a9416e;
+          color: #64172f;
           text-decoration: none;
           font-weight: 800;
           font-size: 14px;
@@ -96,7 +96,7 @@ export default function PolicyPage() {
           padding: 40px;
           border-radius: 24px;
           box-shadow: 0 10px 40px rgba(83, 53, 66, 0.08);
-          border: 1px solid #eadde3;
+          border: 1px solid #e5dfe1;
         }
         .main-title {
           font-size: 32px;
@@ -117,16 +117,16 @@ export default function PolicyPage() {
         .section-title {
           font-size: 20px;
           font-weight: 900;
-          color: #a9416e;
+          color: #64172f;
           margin-bottom: 15px;
           padding-bottom: 10px;
-          border-bottom: 2px dashed #f0e7eb;
+          border-bottom: 2px dashed #f8f7f7;
         }
         .policy-card {
-          background: #fdfafb;
+          background: #ffffff;
           padding: 25px;
           border-radius: 16px;
-          border: 1px solid #f0e7eb;
+          border: 1px solid #f8f7f7;
         }
         .policy-card h3 {
           font-size: 16px;
@@ -144,7 +144,7 @@ export default function PolicyPage() {
           margin: 0;
         }
         .inline-link {
-          color: #a9416e;
+          color: #64172f;
           font-weight: 800;
           text-decoration: underline;
         }

@@ -4,7 +4,7 @@ export default function ContactPage() {
       style={{
         minHeight: "70vh",
         padding: "60px 20px",
-        background: "#fff8fb",
+        background: "#f8f7f7",
         color: "#30232a",
         fontFamily: "Arial, sans-serif",
       }}
@@ -15,7 +15,7 @@ export default function ContactPage() {
           margin: "0 auto",
           padding: "32px",
           background: "#ffffff",
-          border: "1px solid #f0dce6",
+          border: "1px solid #f8f7f7",
           borderRadius: "20px",
           textAlign: "center",
           boxShadow: "0 10px 30px rgba(100, 50, 75, 0.08)",

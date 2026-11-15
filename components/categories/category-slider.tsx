@@ -153,8 +153,8 @@ export default function CategorySlider({ categories }: { categories: Category[] 
           border-radius: 16px;
           overflow: hidden;
           box-shadow: 0 8px 20px rgba(125, 51, 85, 0.12);
-          border: 1px solid #eadde3;
-          background: #fdfafb;
+          border: 1px solid #e5dfe1;
+          background: #ffffff;
         }
 
         .image-box img {
@@ -173,7 +173,7 @@ export default function CategorySlider({ categories }: { categories: Category[] 
           height: 100%;
           display: grid;
           place-items: center;
-          color: #9a7c88;
+          color: #806d74;
           font-size: 14px;
         }
 
@@ -227,7 +227,7 @@ export default function CategorySlider({ categories }: { categories: Category[] 
         .dot.active {
           width: 25px;
           border-radius: 10px;
-          background: #7d3355;
+          background: #3f0d20;
         }
 
         @media (max-width: 900px) {

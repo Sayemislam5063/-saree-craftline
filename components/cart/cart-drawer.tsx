@@ -202,7 +202,7 @@ const price =
     minHeight: "46px",
     marginTop: "9px",
     padding: "0 16px",
-    border: "1px solid #e3cbd7",
+    border: "1px solid #e5dfe1",
     borderRadius: "13px",
     background: "#ffffff",
     color: "#5d3b4e",
@@ -213,13 +213,13 @@ const price =
     transition: "all 0.18s ease",
   }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.background = "#f8eef3";
-    e.currentTarget.style.borderColor = "#c99ab1";
+    e.currentTarget.style.background = "#f8f7f7";
+    e.currentTarget.style.borderColor = "#a98290";
     e.currentTarget.style.transform = "translateY(-1px)";
   }}
   onMouseLeave={(e) => {
     e.currentTarget.style.background = "#ffffff";
-    e.currentTarget.style.borderColor = "#e3cbd7";
+    e.currentTarget.style.borderColor = "#e5dfe1";
     e.currentTarget.style.transform = "translateY(0)";
   }}
 >
@@ -284,7 +284,7 @@ const price =
 
         .drawer-eyebrow {
           margin: 0 0 4px;
-          color: #9a416d;
+          color: #64172f;
           font-size: 10px;
           font-weight: 900;
           letter-spacing: 1.5px;
@@ -301,7 +301,7 @@ const price =
           height: 40px;
           border: 0;
           border-radius: 12px;
-          background: #f7f1f4;
+          background: #f8f7f7;
           color: #332a2f;
           cursor: pointer;
           font-size: 27px;
@@ -376,8 +376,8 @@ const price =
           background:
             linear-gradient(
               145deg,
-              #f8dde7,
-              #ebe3ff
+              #f8f7f7,
+              #f8f7f7
             );
         }
 
@@ -434,7 +434,7 @@ const price =
           width: 28px;
           height: 28px;
           border: 0;
-          background: #f7f1f4;
+          background: #f8f7f7;
           cursor: pointer;
           font-size: 16px;
         }
@@ -502,14 +502,14 @@ const price =
 
 /* Cart দেখুন */
 .view-cart-button {
-  border: 1px solid rgba(154, 65, 109, 0.22);
+  border: 1px solid rgba(84, 17, 38, 0.22);
   background: #fff;
   color: #6d3b55;
 }
 
 .view-cart-button:hover {
-  background: #faf1f6;
-  border-color: rgba(154, 65, 109, 0.35);
+  background: #f8f7f7;
+  border-color: rgba(84, 17, 38, 0.35);
   transform: translateY(-1px);
   box-shadow: 0 5px 14px rgba(93, 67, 77, 0.08);
 }

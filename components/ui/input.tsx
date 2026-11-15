@@ -14,19 +14,19 @@ const Input = forwardRef<HTMLInputElement, any>(({ label, error, className = "",
           width: 100%;
           padding: 12px 15px;
           border-radius: 12px;
-          border: 1px solid #eadfe5;
-          background: #fcfafb;
+          border: 1px solid #e5dfe1;
+          background: #ffffff;
           font-size: 14px;
           outline: none;
           transition: all 0.2s ease;
         }
         .custom-input:focus {
-          border-color: #7d3355;
+          border-color: #3f0d20;
           background: white;
           box-shadow: 0 0 0 3px rgba(125, 51, 85, 0.1);
         }
-        .custom-input.has-error { border-color: #d32f2f; }
-        .custom-error { font-size: 12px; color: #d32f2f; font-weight: 600; }
+        .custom-input.has-error { border-color: #64172f; }
+        .custom-error { font-size: 12px; color: #64172f; font-weight: 600; }
       `}</style>
     </div>
   );

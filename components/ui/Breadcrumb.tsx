@@ -70,7 +70,7 @@ export default function Breadcrumb() {
           width: 100%;
           padding: 12px 0;
           background: #ffffff;
-          border-bottom: 1px solid #eadde3;
+          border-bottom: 1px solid #e5dfe1;
           font-family: "Inter", sans-serif;
         }
 
@@ -101,16 +101,16 @@ export default function Breadcrumb() {
         }
 
         .breadcrumb-link:hover {
-          color: #7d3355; 
+          color: #3f0d20; 
         }
 
         .breadcrumb-separator {
-          color: #c5b5bd;
+          color: #a99ba1;
           font-size: 14px;
         }
 
         .breadcrumb-current {
-          color: #7d3355; 
+          color: #3f0d20; 
           font-weight: 800;
           text-transform: capitalize;
           max-width: 250px;

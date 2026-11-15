@@ -81,7 +81,7 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
               rgba(190, 111, 143, 0.18),
               transparent 35%
             ),
-            linear-gradient(135deg, #fff8fb, #f8f1f5);
+            linear-gradient(135deg, #f8f7f7, #f8f7f7);
         }
 
         .login-card {
@@ -113,7 +113,7 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
           font-size: 12px;
           letter-spacing: 2px;
           font-weight: 800;
-          color: #a04f72;
+          color: #64172f;
         }
 
         h1 {
@@ -145,7 +145,7 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         input {
           width: 100%;
           padding: 14px 15px;
-          border: 1px solid #eadde3;
+          border: 1px solid #e5dfe1;
           border-radius: 14px;
           outline: none;
           background: #fff;
@@ -153,7 +153,7 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         }
 
         input:focus {
-          border-color: #b86b8a;
+          border-color: #64172f;
           box-shadow: 0 0 0 4px rgba(184, 107, 138, 0.1);
         }
 

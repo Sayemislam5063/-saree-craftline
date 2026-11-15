@@ -475,7 +475,7 @@ export default function FavoritesPage() {
           background:
             radial-gradient(
               circle at top left,
-              rgba(255, 230, 239, 0.55),
+              rgba(84, 17, 38, 0.55),
               transparent 30%
             ),
             #fff;
@@ -503,7 +503,7 @@ export default function FavoritesPage() {
         }
 
         .breadcrumb a:hover {
-          color: #a04a72;
+          color: #64172f;
           text-decoration: underline;
         }
 
@@ -522,7 +522,7 @@ export default function FavoritesPage() {
 
         .eyebrow {
           margin: 0 0 8px;
-          color: #9a416d;
+          color: #64172f;
           font-size: 11px;
           font-weight: 900;
           letter-spacing: 1.5px;
@@ -559,8 +559,8 @@ export default function FavoritesPage() {
         .loading-spinner {
           width: 42px;
           height: 42px;
-          border: 4px solid #f1dce5;
-          border-top-color: #b14f79;
+          border: 4px solid #e5dfe1;
+          border-top-color: #64172f;
           border-radius: 50%;
           animation: spin 0.8s linear
             infinite;
@@ -591,8 +591,8 @@ export default function FavoritesPage() {
           place-items: center;
           margin-bottom: 18px;
           border-radius: 22px;
-          background: #faeef4;
-          color: #d64072;
+          background: #f8f7f7;
+          color: #64172f;
           font-size: 38px;
         }
 

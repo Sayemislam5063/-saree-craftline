@@ -94,7 +94,7 @@ export default function HomePage() {
       borderRadius: isActive ? "10px" : "50%",
       border: "none",
       cursor: "pointer",
-      background: isActive ? "#7d3355" : isHovered ? "#5e233d" : "#d1c1c9", 
+      background: isActive ? "#3f0d20" : isHovered ? "#5e233d" : "#d1c1c9", 
       transform: isHovered ? "scale(1.35)" : "scale(1)",
       transition: "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, width 0.35s ease, border-radius 0.35s ease, box-shadow 0.2s ease",
       boxShadow: isHovered ? "0 4px 12px rgba(125, 51, 85, 0.45)" : "none",
@@ -136,7 +136,7 @@ export default function HomePage() {
                         boxShadow: isHoveredCard && position === "active" ? "0 25px 50px rgba(0, 0, 0, 0.15), 0 0 0 3px rgba(125, 51, 85, 0.2)" : "0 10px 30px rgba(0, 0, 0, 0.08)",
                       }}
                     >
-                      {imageUrl ? <img src={imageUrl} alt={product.name} /> : <div style={{ width: "100%", height: "75%", display: "grid", placeItems: "center", fontSize: "60px", background: "#fdfafb" }}>👗</div>}
+                      {imageUrl ? <img src={imageUrl} alt={product.name} /> : <div style={{ width: "100%", height: "75%", display: "grid", placeItems: "center", fontSize: "60px", background: "#ffffff" }}>👗</div>}
                       
                       <div className="slider-3d-info">
                         <span className="category-tag">{product.categoryName || "SAREE"}</span>
@@ -186,7 +186,7 @@ export default function HomePage() {
               borderRadius: "999px",
               textDecoration: "none",
               color: "#ffffff",
-              background: hovered === "viewAll" ? "linear-gradient(135deg, #8f3a5f, #7d3355)" : "linear-gradient(135deg, #7d3355, #5e233d)",
+              background: hovered === "viewAll" ? "linear-gradient(135deg, #64172f, #3f0d20)" : "linear-gradient(135deg, #3f0d20, #5e233d)",
               border: "1px solid #5e233d",
               fontSize: "13.5px",
               fontWeight: 900,
@@ -207,8 +207,8 @@ export default function HomePage() {
         .container { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
         .section { padding: 34px 0; }
         .section-head { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 4px; margin-bottom: 26px; }
-        .section-title { margin: 0; font-size: clamp(26px, 3.5vw, 34px); letter-spacing: -0.7px; font-weight: 900; color: #7d3355; text-align: center; }
-        .section-title-underline { display: block; width: 70px; height: 3px; margin-top: 10px; border-radius: 3px; background: linear-gradient(90deg, transparent, #7d3355, #5e233d, #7d3355, transparent); }
+        .section-title { margin: 0; font-size: clamp(26px, 3.5vw, 34px); letter-spacing: -0.7px; font-weight: 900; color: #3f0d20; text-align: center; }
+        .section-title-underline { display: block; width: 70px; height: 3px; margin-top: 10px; border-radius: 3px; background: linear-gradient(90deg, transparent, #3f0d20, #5e233d, #3f0d20, transparent); }
         .section-text { margin: 8px 0 0; color: #88757d; font-size: 13px; text-align: center; }
         .all-products-button { padding: 24px 0 40px; text-align: center; }
 
@@ -220,8 +220,8 @@ export default function HomePage() {
         
         .slider-3d-info { padding: 14px 15px; text-align: center; background: transparent; }
         .slider-3d-info h4 { margin: 0; font-size: 15px; color: #333; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .slider-3d-info p { margin: 6px 0 0; font-weight: 900; color: #7d3355; font-size: 17px; }
-        .slider-3d-info .category-tag { display: block; font-size: 9px; color: #9a7c88; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; }
+        .slider-3d-info p { margin: 6px 0 0; font-weight: 900; color: #3f0d20; font-size: 17px; }
+        .slider-3d-info .category-tag { display: block; font-size: 9px; color: #806d74; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; }
         
         .slider-3d-card.active { transform: translateX(0) translateZ(0) scale(1.1); z-index: 10; opacity: 1; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12); }
         .slider-3d-card.prev { transform: translateX(-165px) translateZ(-100px) rotateY(28deg); z-index: 5; opacity: 0.9; }

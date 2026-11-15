@@ -234,15 +234,15 @@ export default function SettingsPage() {
           border-radius: 13px;
           background: linear-gradient(
             135deg,
-            #d66f99,
-            #b14f79
+            #64172f,
+            #64172f
           );
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 15px;
           font-weight: 800;
-          box-shadow: 0 8px 20px rgba(177,79,121,0.25);
+          box-shadow: 0 8px 20px rgba(84,17,38,0.25);
         }
 
         .brand-name {
@@ -293,11 +293,11 @@ export default function SettingsPage() {
           color: white;
           background: linear-gradient(
             90deg,
-            rgba(177,79,121,0.32),
-            rgba(177,79,121,0.15)
+            rgba(84,17,38,0.32),
+            rgba(84,17,38,0.15)
           );
           box-shadow:
-            inset 3px 0 0 #d56e98,
+            inset 3px 0 0 #64172f,
             0 5px 15px rgba(0,0,0,0.08);
         }
 
@@ -342,7 +342,7 @@ export default function SettingsPage() {
         }
 
         .eyebrow {
-          color: #b14f79;
+          color: #64172f;
           font-size: 9px;
           letter-spacing: 1.7px;
           font-weight: 900;
@@ -367,14 +367,14 @@ export default function SettingsPage() {
 
         .section-header {
           padding-bottom: 18px;
-          border-bottom: 1px solid #f0e9ed;
+          border-bottom: 1px solid #f8f7f7;
           margin-bottom: 20px;
         }
 
         .section-label {
           font-size: 8px;
           letter-spacing: 1.5px;
-          color: #b14f79;
+          color: #64172f;
           font-weight: 900;
           margin-bottom: 5px;
         }
@@ -426,8 +426,8 @@ export default function SettingsPage() {
         }
 
         .field input:focus {
-          border-color: #c66b91;
-          box-shadow: 0 0 0 3px rgba(177,79,121,0.08);
+          border-color: #64172f;
+          box-shadow: 0 0 0 3px rgba(84,17,38,0.08);
         }
 
         .input-with-symbol {
@@ -459,9 +459,9 @@ export default function SettingsPage() {
           align-items: center;
           gap: 13px;
           padding: 15px;
-          border: 1px solid #eee3e8;
+          border: 1px solid #e5dfe1;
           border-radius: 13px;
-          background: #fdfbfc;
+          background: #ffffff;
         }
 
         .payment-icon {
@@ -506,16 +506,16 @@ export default function SettingsPage() {
           height: 43px;
           padding: 0 22px;
           border-radius: 11px;
-          background: #b14f79;
+          background: #64172f;
           color: white;
           font-size: 12px;
           font-weight: 800;
           cursor: pointer;
-          box-shadow: 0 8px 20px rgba(177,79,121,0.2);
+          box-shadow: 0 8px 20px rgba(84,17,38,0.2);
         }
 
         .save-button:hover {
-          background: #a4446d;
+          background: #64172f;
         }
 
         @media (max-width: 760px) {

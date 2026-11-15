@@ -65,15 +65,15 @@ export default function CategorySection({
             textDecoration: "none",
             color: "#ffffff",
             background:
-              "linear-gradient(135deg, #b14f79, #a4446d)",
-            border: "1px solid #a4446d",
+              "linear-gradient(135deg, #64172f, #64172f)",
+            border: "1px solid #64172f",
             fontSize: "12.5px",
             fontWeight: 900,
             letterSpacing: "0.2px",
             whiteSpace: "nowrap",
             flexShrink: 0,
             boxShadow:
-              "0 8px 20px rgba(177, 79, 121, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.15)",
+              "0 8px 20px rgba(84, 17, 38, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.15)",
             transition:
               "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.25s ease",
             cursor: "pointer",
@@ -130,12 +130,12 @@ export default function CategorySection({
           border-radius: 4px;
           background: linear-gradient(
             180deg,
-            #d66f99 0%,
-            #a9416e 100%
+            #64172f 0%,
+            #64172f 100%
           );
           box-shadow:
             0 4px 12px
-              rgba(169, 65, 110, 0.3);
+              rgba(84, 17, 38, 0.3);
         }
 
         .section-head-left {
@@ -199,17 +199,17 @@ export default function CategorySection({
           background:
             linear-gradient(
               135deg,
-              #faeef4,
-              #f5dfeb
+              #f8f7f7,
+              #f8f7f7
             );
-          color: #a4446d;
+          color: #64172f;
           font-size: 11px;
           font-weight: 900;
           letter-spacing: 0.3px;
           line-height: 1;
           box-shadow:
             inset 0 0 0 1px
-              rgba(154, 65, 109, 0.1);
+              rgba(84, 17, 38, 0.1);
         }
 
         .section-text {
@@ -232,7 +232,7 @@ export default function CategorySection({
           background-image:
             linear-gradient(
               to right,
-              rgba(177, 79, 121, 0.35) 50%,
+              rgba(84, 17, 38, 0.35) 50%,
               transparent 50%
             );
           background-size: 10px 2px;
@@ -252,10 +252,10 @@ export default function CategorySection({
           width: 6px;
           height: 6px;
           border-radius: 50%;
-          background: #b14f79;
+          background: #64172f;
           box-shadow:
             0 0 0 3px
-              rgba(177, 79, 121, 0.15);
+              rgba(84, 17, 38, 0.15);
         }
 
         /* ✨ Flowing animation on the dotted line */
@@ -280,16 +280,16 @@ export default function CategorySection({
           0%, 100% {
             box-shadow:
               0 8px 20px
-                rgba(177, 79, 121, 0.28),
+                rgba(84, 17, 38, 0.28),
               inset 0 1px 0
                 rgba(255, 255, 255, 0.15);
           }
           50% {
             box-shadow:
               0 10px 24px
-                rgba(177, 79, 121, 0.4),
+                rgba(84, 17, 38, 0.4),
               0 0 0 4px
-                rgba(177, 79, 121, 0.08),
+                rgba(84, 17, 38, 0.08),
               inset 0 1px 0
                 rgba(255, 255, 255, 0.15);
           }
@@ -301,12 +301,12 @@ export default function CategorySection({
           background:
             linear-gradient(
               135deg,
-              #c15c85,
-              #b14f79
+              #64172f,
+              #64172f
             ) !important;
           box-shadow:
             0 14px 28px
-              rgba(177, 79, 121, 0.4),
+              rgba(84, 17, 38, 0.4),
             inset 0 1px 0
               rgba(255, 255, 255, 0.2) !important;
         }
