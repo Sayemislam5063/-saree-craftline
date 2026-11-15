@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -542,7 +543,7 @@ export default function ProductCard({
         </div>
       </div>
 
-      {quickViewOpen && (
+      {quickViewOpen && typeof document !== "undefined" && createPortal((
         <div className="quick-view-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setQuickViewOpen(false); }}>
           <section className="quick-view-dialog" role="dialog" aria-modal="true" aria-label={`${product.name} quick view`}>
             <button type="button" className="quick-view-close" onClick={() => setQuickViewOpen(false)} aria-label="Close">×</button>
@@ -560,7 +561,7 @@ export default function ProductCard({
             </div>
           </section>
         </div>
-      )}
+      ), document.body)}
 
       {/* GLOBAL KEYFRAMES */}
       <style jsx global>{`
@@ -604,17 +605,8 @@ export default function ProductCard({
           position: relative;
           overflow: hidden;
           border-radius: 20px;
-          background:
-            linear-gradient(
-              135deg,
-              rgba(255, 255, 255, 0.92),
-              rgba(255, 248, 252, 0.88)
-            );
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
-          border:
-            1px solid
-            rgba(255, 255, 255, 0.9);
+          background: #ffffff;
+          border: 1px solid #ead9df;
           box-shadow:
             0 8px 32px
               rgba(83, 53, 66, 0.08),
@@ -641,8 +633,7 @@ export default function ProductCard({
             0 1px 0
               rgba(255, 255, 255, 0.95)
               inset;
-          border-color:
-            rgba(255, 255, 255, 1);
+          border-color: #c8a3b0;
         }
 
         /* IMAGE */
