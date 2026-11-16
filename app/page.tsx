@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "../components/cart/cart-provider";
@@ -20,6 +20,10 @@ type HomeProduct = {
   averageRating?: number; reviewCount?: number;
 };
 
+// ✏️ তোমার WhatsApp নাম্বার এখানে বসাও (দেশের কোড সহ, + ছাড়া)
+const WHATSAPP_NUMBER = "8801700000000";
+const WHATSAPP_MESSAGE = "আসসালামু আলাইকুম, আমি আপনাদের প্রোডাক্ট সম্পর্কে জানতে চাই।";
+
 const BUTTON_TRANSITION =
   "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease";
 
@@ -34,14 +38,24 @@ export default function HomePage() {
   const [hovered, setHovered] = useState<string | null>(null);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
+  // ✅ BUG FIX: favorites load + multi-tab sync listener
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("saree-craftline-favorites");
-      const parsed = saved ? JSON.parse(saved) : [];
-      if (Array.isArray(parsed)) setFavoriteIds(parsed);
-    } catch (error) {
-      console.error("Favorite load error:", error);
-    }
+    const syncFavorites = () => {
+      try {
+        const saved = localStorage.getItem("saree-craftline-favorites");
+        const parsed = saved ? JSON.parse(saved) : [];
+        if (Array.isArray(parsed)) setFavoriteIds(parsed);
+      } catch (error) {
+        console.error("Favorite load error:", error);
+      }
+    };
+    syncFavorites();
+    window.addEventListener("saree-craftline-favorites-change", syncFavorites);
+    window.addEventListener("storage", syncFavorites);
+    return () => {
+      window.removeEventListener("saree-craftline-favorites-change", syncFavorites);
+      window.removeEventListener("storage", syncFavorites);
+    };
   }, []);
 
   useEffect(() => {
@@ -52,7 +66,7 @@ export default function HomePage() {
         supabase.from("products").select(`
           id, name, description, category_id, stock_quantity, price_type,
           without_blouse_price, discount_without_blouse_price, with_blouse_price, discount_with_blouse_price,
-          single_price, single_discount_price, images, thumbnail_index, is_active, is_free_delivery,
+          single_price, single_discount_price, images, thumbnail_index, is_active, is_free_delivery, is_best_selling,
           categories ( id, name, slug )
         `).eq("is_active", true).order("created_at", { ascending: false }),
       ]);
@@ -77,7 +91,10 @@ export default function HomePage() {
             withBlouse: isSingle ? Number(product.single_price ?? 0) : Number(product.with_blouse_price ?? 0),
             discountPrice: isSingle ? (product.single_discount_price ?? undefined) : (product.discount_without_blouse_price ?? undefined),
           },
-          stock: Number(product.stock_quantity ?? 0), isActive: product.is_active ?? true, isBestSelling: false, isFreeDelivery: Boolean(product.is_free_delivery),
+          stock: Number(product.stock_quantity ?? 0),
+          isActive: product.is_active ?? true,
+          isBestSelling: Boolean(product.is_best_selling), // ✅ BUG FIX
+          isFreeDelivery: Boolean(product.is_free_delivery),
         };
       });
 
@@ -109,7 +126,8 @@ export default function HomePage() {
     loadHomepageData();
   }, []);
 
-  const topProductsFor3D = [...products].slice(0, 5);
+  // ✅ small perf: memoize so array ref doesn't change every render
+  const topProductsFor3D = useMemo(() => products.slice(0, 5), [products]);
 
   useEffect(() => {
     if (topProductsFor3D.length <= 1 || isHovering3D) return;
@@ -140,7 +158,7 @@ export default function HomePage() {
       borderRadius: isActive ? "10px" : "50%",
       border: "none",
       cursor: "pointer",
-      background: isActive ? "#3f0d20" : isHovered ? "#5e233d" : "#d1c1c9", 
+      background: isActive ? "#3f0d20" : isHovered ? "#5e233d" : "#d1c1c9",
       transform: isHovered ? "scale(1.35)" : "scale(1)",
       transition: "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, width 0.35s ease, border-radius 0.35s ease, box-shadow 0.2s ease",
       boxShadow: isHovered ? "0 4px 12px rgba(125, 51, 85, 0.45)" : "none",
@@ -287,8 +305,21 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* ✨ ANIMATED WHATSAPP BUBBLE */}
+      <a
+        href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="wa-bubble"
+        aria-label="Chat on WhatsApp"
+      >
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+        </svg>
+        <span className="wa-tooltip">Chat with us 💬</span>
+      </a>
+
       <style jsx>{`
-        /* ✨ এখানে ব্যাকগ্রাউন্ড সম্পূর্ণ সাদা করা হয়েছে */
         .site { min-height: 100vh; background: #ffffff; color: #201a1d; font-family: "Inter", sans-serif; }
         .container { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
         .section { padding: 34px 0; }
@@ -329,6 +360,82 @@ export default function HomePage() {
         .slider-add-to-cart:disabled { border-color: #d9d2d5; background: #f1eff0; color: #81777b; cursor: not-allowed; }
         .slider-3d-dots { display: flex; gap: 9px; margin-top: 16px; z-index: 20; }
 
+        /* ✨ WHATSAPP BUBBLE */
+        .wa-bubble {
+          position: fixed;
+          right: 22px;
+          bottom: 22px;
+          width: 58px;
+          height: 58px;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          color: #fff;
+          text-decoration: none;
+          background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+          box-shadow: 0 10px 28px rgba(37, 211, 102, 0.42);
+          z-index: 9999;
+          translate: 0 0;
+          animation: waFloat 3.5s ease-in-out infinite;
+          transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+                      box-shadow 0.28s,
+                      translate 0.28s ease;
+        }
+        .wa-bubble::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          pointer-events: none;
+          animation: waPulse 2.4s ease-out infinite;
+        }
+        .wa-bubble:hover {
+          transform: scale(1.1) rotate(-6deg);
+          box-shadow: 0 14px 34px rgba(37, 211, 102, 0.55);
+        }
+        .wa-bubble:active { transform: scale(0.95) rotate(-3deg); }
+        .wa-bubble svg { position: relative; z-index: 1; }
+
+        .wa-tooltip {
+          position: absolute;
+          right: calc(100% + 12px);
+          top: 50%;
+          transform: translateY(-50%) translateX(8px);
+          background: #111;
+          color: #fff;
+          padding: 7px 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 600;
+          white-space: nowrap;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        .wa-tooltip::after {
+          content: "";
+          position: absolute;
+          left: 100%;
+          top: 50%;
+          transform: translateY(-50%);
+          border: 5px solid transparent;
+          border-left-color: #111;
+        }
+        .wa-bubble:hover .wa-tooltip {
+          opacity: 1;
+          transform: translateY(-50%) translateX(0);
+        }
+
+        @keyframes waFloat {
+          0%, 100% { translate: 0 0; }
+          50%      { translate: 0 -6px; }
+        }
+        @keyframes waPulse {
+          0%   { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.55); }
+          70%  { box-shadow: 0 0 0 22px rgba(37, 211, 102, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
+        }
+
         @media (max-width: 900px) {
           .slider-3d-wrapper { height: 500px; }
           .slider-3d-container { height: 430px; }
@@ -359,6 +466,13 @@ export default function HomePage() {
           .slider-actions { width: min(100%, 300px); margin-top: 5px; }
           .slider-add-to-cart { min-height: 42px; padding: 0 10px; font-size: 12px; }
           .slider-3d-dots { margin-top: 10px; }
+          .wa-bubble { width: 52px; height: 52px; right: 16px; bottom: 16px; }
+          .wa-tooltip { display: none; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .wa-bubble { animation: none; }
+          .wa-bubble::before { animation: none; }
         }
       `}</style>
     </main>
