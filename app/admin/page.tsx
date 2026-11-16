@@ -47,20 +47,24 @@ export default function AdminDashboardPage() {
       return orderDate >= start && orderDate <= end;
     });
 
-    // ২. বেসিক স্ট্যাটস
-    let totalSales = 0;
-    let totalCost = 0;
-    let totalProfit = 0;
-    
+    const deliveredOrders = filteredOrders.filter((order) => {
+      const status = String(order.steadfast_delivery_status || order.status || "").toLowerCase().trim();
+      return status === "delivered";
+    });
+    const cancelledOrders = filteredOrders.filter((order) => {
+      const status = String(order.steadfast_delivery_status || order.status || "").toLowerCase().trim();
+      return status === "cancelled" || status === "canceled";
+    });
+
+    // Count revenue/cost only for delivered orders. The saved delivery charge
+    // of a cancelled order is counted separately as a loss.
+    const totalSales = deliveredOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+    const totalCost = deliveredOrders.reduce((sum, order) => sum + Number(order.cost_total || 0), 0);
+    const cancellationLoss = cancelledOrders.reduce((sum, order) => sum + Number(order.delivery_charge || 0), 0);
+    const totalProfit = totalSales - totalCost - cancellationLoss;
     const productStats: Record<string, { id: string; name: string; qty: number; revenue: number }> = {};
 
-    filteredOrders.forEach((order) => {
-      const orderTotal = Number(order.total || 0);
-      const orderCost = Number(order.cost_total || 0);
-      
-      totalSales += orderTotal;
-      totalCost += orderCost;
-      totalProfit += (orderTotal - orderCost);
+    deliveredOrders.forEach((order) => {
 
       // ৩. প্রোডাক্ট ভিত্তিক বিক্রি (Top Selling)
       if (Array.isArray(order.items)) {
@@ -84,10 +88,12 @@ export default function AdminDashboardPage() {
       .slice(0, 10);
 
     return {
-      totalOrders: filteredOrders.length,
+      totalOrders: deliveredOrders.length,
       totalSales,
       totalCost,
       totalProfit,
+      cancellationLoss,
+      cancelledOrders: cancelledOrders.length,
       topProducts,
     };
   }, [orders, fromDate, toDate]);
@@ -163,7 +169,7 @@ export default function AdminDashboardPage() {
               <div className="stat-card sales">
                 <div className="stat-icon">💰</div>
                 <div>
-                  <div className="stat-label">TOTAL SALES</div>
+                  <div className="stat-label">DELIVERED SALES</div>
                   <div className="stat-value">৳ {dashboardData.totalSales.toLocaleString("en-BD")}</div>
                 </div>
               </div>
@@ -177,7 +183,7 @@ export default function AdminDashboardPage() {
               <div className="stat-card orders">
                 <div className="stat-icon">📦</div>
                 <div>
-                  <div className="stat-label">TOTAL ORDERS</div>
+                  <div className="stat-label">DELIVERED ORDERS</div>
                   <div className="stat-value">{dashboardData.totalOrders}</div>
                 </div>
               </div>
@@ -188,7 +194,16 @@ export default function AdminDashboardPage() {
                   <div className="stat-value">৳ {dashboardData.totalCost.toLocaleString("en-BD")}</div>
                 </div>
               </div>
+              <div className="stat-card loss">
+                <div className="stat-icon">↘</div>
+                <div>
+                  <div className="stat-label">CANCELLED DELIVERY LOSS</div>
+                  <div className="stat-value">৳ {dashboardData.cancellationLoss.toLocaleString("en-BD")}</div>
+                  <div className="stat-note">{dashboardData.cancelledOrders} cancelled orders</div>
+                </div>
+              </div>
             </div>
+            <p className="accounting-note">Sales, purchase cost ও product profit-এ শুধু Delivered order ধরা হয়েছে। Cancelled order-এর সংরক্ষিত delivery charge-কে loss ধরা হয়েছে।</p>
 
             {/* ✨ Top Selling Products */}
             <div className="top-products-card">
@@ -196,7 +211,7 @@ export default function AdminDashboardPage() {
                 <div>
                   <div className="section-label">PERFORMANCE</div>
                   <h2>Top Selling Products</h2>
-                  <p>সিলেক্ট করা তারিখের সবচেয়ে বেশি বিক্রি হওয়া পণ্য</p>
+                  <p>সিলেক্ট করা তারিখের Delivered order থেকে সবচেয়ে বেশি বিক্রি হওয়া পণ্য</p>
                 </div>
               </div>
 
@@ -314,7 +329,7 @@ export default function AdminDashboardPage() {
         .quick-filters button:hover { background: #f8f7f7; border-color: #a98290; color: #64172f; }
 
         /* STATS GRID */
-        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-bottom: 12px; }
         .stat-card { background: white; border: 1px solid #eee7eb; border-radius: 16px; padding: 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 6px 20px rgba(45, 25, 38, 0.04); transition: 0.2s; }
         .stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 25px rgba(45, 25, 38, 0.08); }
         .stat-icon { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 22px; }
@@ -325,8 +340,13 @@ export default function AdminDashboardPage() {
         
         .stat-label { font-size: 10px; color: #9b8d95; font-weight: 900; letter-spacing: 1px; margin-bottom: 5px; }
         .stat-value { font-size: 22px; font-weight: 900; color: #241d22; }
-        .stat-card.sales .stat-value { color: #1f6a42; }
-        .stat-card.profit .stat-value { color: #1a73e8; }
+        .stat-card.sales .stat-value { color: #541126; }
+        .stat-card.profit .stat-value { color: #541126; }
+        .stat-card.loss { border-color: #e5dfe1; }
+        .stat-card.loss .stat-icon { background: #f8f7f7; color: #64172f; }
+        .stat-card.loss .stat-value { color: #64172f; }
+        .stat-note { margin-top: 4px; color: #806d74; font-size: 10px; font-weight: 650; }
+        .accounting-note { margin: 0 0 24px; padding: 10px 13px; border: 1px solid #e5dfe1; border-radius: 10px; background: #fff; color: #6e626a; font-size: 11px; line-height: 1.6; }
 
         /* TOP PRODUCTS CARD */
         .top-products-card { background: white; border: 1px solid #eee7eb; border-radius: 20px; box-shadow: 0 6px 20px rgba(45, 25, 38, 0.04); overflow: hidden; }
@@ -364,7 +384,8 @@ export default function AdminDashboardPage() {
         .loading-box { text-align: center; padding: 50px; color: #8f8088; font-weight: 600; font-size: 14px; }
 
         /* RESPONSIVE */
-        @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 1280px) { .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+        @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         @media (max-width: 760px) {
           .sidebar { width: 72px; padding: 18px 9px; }
           .brand { justify-content: center; padding-left: 0; padding-right: 0; }
