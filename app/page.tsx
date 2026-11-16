@@ -20,7 +20,7 @@ type HomeProduct = {
   averageRating?: number; reviewCount?: number;
 };
 
-// ✏️ তোমার WhatsApp নাম্বার এখানে বসাও (দেশের কোড সহ, + ছাড়া)
+// ✏️ তোমার আসল WhatsApp নাম্বার এখানে বসাও (+ ছাড়া, দেশের কোড সহ)
 const WHATSAPP_NUMBER = "8801700000000";
 const WHATSAPP_MESSAGE = "আসসালামু আলাইকুম, আমি আপনাদের প্রোডাক্ট সম্পর্কে জানতে চাই।";
 
@@ -33,12 +33,13 @@ export default function HomePage() {
   const [categories, setCategories] = useState<HomeCategory[]>([]);
   const [products, setProducts] = useState<HomeProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [current3DIndex, setCurrent3DIndex] = useState(0);
   const [isHovering3D, setIsHovering3D] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
-  // ✅ BUG FIX: favorites load + multi-tab sync listener
+  // ✅ Favorites load + multi-tab sync
   useEffect(() => {
     const syncFavorites = () => {
       try {
@@ -61,18 +62,34 @@ export default function HomePage() {
   useEffect(() => {
     async function loadHomepageData() {
       setLoading(true);
+      setLoadError(null);
+
       const [categoriesResult, productsResult] = await Promise.all([
         supabase.from("categories").select("id, name, slug, image_url, is_active").eq("is_active", true),
         supabase.from("products").select(`
           id, name, description, category_id, stock_quantity, price_type,
           without_blouse_price, discount_without_blouse_price, with_blouse_price, discount_with_blouse_price,
-          single_price, single_discount_price, images, thumbnail_index, is_active, is_free_delivery, is_best_selling,
+          single_price, single_discount_price, images, thumbnail_index, is_active, is_free_delivery,
           categories ( id, name, slug )
         `).eq("is_active", true).order("created_at", { ascending: false }),
       ]);
 
+      // ✅ Error logging — ভবিষ্যতে এই ধরনের সমস্যা সাথে সাথে ধরা পড়বে
+      if (categoriesResult.error) {
+        console.error("Categories load error:", categoriesResult.error);
+      }
+      if (productsResult.error) {
+        console.error("Products load error:", productsResult.error);
+        setLoadError(productsResult.error.message);
+      }
+
       const loadedCategories = (categoriesResult.data ?? []).map((category: any) => ({
-        id: category.id, name: category.name, slug: category.slug, description: "", imageUrl: category.image_url ?? "", isActive: category.is_active ?? true,
+        id: category.id,
+        name: category.name,
+        slug: category.slug,
+        description: "",
+        imageUrl: category.image_url ?? "",
+        isActive: category.is_active ?? true,
       }));
 
       let loadedProducts: HomeProduct[] = (productsResult.data ?? []).map((product: any) => {
@@ -82,10 +99,18 @@ export default function HomePage() {
         const isSingle = product.price_type === "single";
 
         return {
-          id: product.id, name: product.name, slug: product.id, description: product.description ?? "",
+          id: product.id,
+          name: product.name,
+          slug: product.id,
+          description: product.description ?? "",
           price_type: product.price_type,
-          categoryId: product.category_id ?? "", categoryName: category?.name ?? "",
-          images: imageUrls.map((url: string, index: number) => ({ url, isThumbnail: index === Number(product.thumbnail_index ?? 0), alt: `${product.name} ${index + 1}` })),
+          categoryId: product.category_id ?? "",
+          categoryName: category?.name ?? "",
+          images: imageUrls.map((url: string, index: number) => ({
+            url,
+            isThumbnail: index === Number(product.thumbnail_index ?? 0),
+            alt: `${product.name} ${index + 1}`,
+          })),
           pricing: {
             withoutBlouse: isSingle ? Number(product.single_price ?? 0) : Number(product.without_blouse_price ?? 0),
             withBlouse: isSingle ? Number(product.single_price ?? 0) : Number(product.with_blouse_price ?? 0),
@@ -93,7 +118,7 @@ export default function HomePage() {
           },
           stock: Number(product.stock_quantity ?? 0),
           isActive: product.is_active ?? true,
-          isBestSelling: Boolean(product.is_best_selling), // ✅ BUG FIX
+          isBestSelling: false, // ⚠️ ডিফল্ট false — DB-তে is_best_selling কলাম থাকলে নিচের নোট দেখো
           isFreeDelivery: Boolean(product.is_free_delivery),
         };
       });
@@ -104,6 +129,11 @@ export default function HomePage() {
           .from("reviews")
           .select("product_id, rating")
           .in("product_id", featuredProductIds);
+
+        if (reviewsResult.error) {
+          console.error("Reviews load error:", reviewsResult.error);
+        }
+
         const summaries = new Map<string, { total: number; count: number }>();
         for (const review of reviewsResult.data ?? []) {
           const current = summaries.get(review.product_id) ?? { total: 0, count: 0 };
@@ -123,10 +153,10 @@ export default function HomePage() {
       setProducts(loadedProducts);
       setLoading(false);
     }
+
     loadHomepageData();
   }, []);
 
-  // ✅ small perf: memoize so array ref doesn't change every render
   const topProductsFor3D = useMemo(() => products.slice(0, 5), [products]);
 
   useEffect(() => {
@@ -165,10 +195,35 @@ export default function HomePage() {
     };
   };
 
-  if (loading) return <main className="site"><div style={{ minHeight: "70vh", display: "grid", placeItems: "center" }}>Products loading...</div></main>;
+  if (loading) {
+    return (
+      <main className="site">
+        <div style={{ minHeight: "70vh", display: "grid", placeItems: "center", color: "#64172f", fontWeight: 700 }}>
+          Products loading...
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="site">
+      {/* ✅ Error থাকলে দেখাবে — debug সহজ হবে */}
+      {loadError && (
+        <div className="container" style={{ paddingTop: 16 }}>
+          <div style={{
+            padding: "12px 16px",
+            background: "#fff2f2",
+            border: "1px solid #f5c2c2",
+            borderRadius: 10,
+            color: "#a40000",
+            fontSize: 13,
+            fontWeight: 600,
+          }}>
+            ⚠️ Products load failed: {loadError}
+          </div>
+        </div>
+      )}
+
       {topProductsFor3D.length > 0 && (
         <section className="section" style={{ paddingTop: 12, paddingBottom: 0 }}>
           <div className="container">
@@ -276,6 +331,16 @@ export default function HomePage() {
         {categories.map((category) => (
           <CategorySection key={category.id} category={category} products={products} />
         ))}
+
+        {/* ✅ প্রোডাক্ট না থাকলে সুন্দর empty state */}
+        {!loadError && products.length === 0 && (
+          <div style={{ textAlign: "center", padding: "60px 20px", color: "#88757d" }}>
+            <div style={{ fontSize: 40, marginBottom: 10 }}>📦</div>
+            <h3 style={{ margin: "0 0 6px", color: "#3f0d20" }}>কোনো প্রোডাক্ট পাওয়া যায়নি</h3>
+            <p style={{ margin: 0, fontSize: 13 }}>Admin panel থেকে প্রোডাক্ট যোগ করুন বা active করুন।</p>
+          </div>
+        )}
+
         <div className="all-products-button">
           <Link
             href="/all-products"
