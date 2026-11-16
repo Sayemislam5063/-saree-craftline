@@ -21,7 +21,7 @@ type HomeProduct = {
 };
 
 // ✏️ তোমার আসল WhatsApp নাম্বার এখানে বসাও (+ ছাড়া, দেশের কোড সহ)
-const WHATSAPP_NUMBER = "8801700000000";
+const WHATSAPP_NUMBER = "8801904872658";
 const WHATSAPP_MESSAGE = "আসসালামু আলাইকুম, আমি আপনাদের প্রোডাক্ট সম্পর্কে জানতে চাই।";
 
 const BUTTON_TRANSITION =
