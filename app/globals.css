@@ -61,7 +61,7 @@ a {
   .container { width: min(100% - 28px, 100%) !important; max-width: 100% !important; }
   main, section, article { min-width: 0; }
   img, video, iframe { max-width: 100%; }
-  .header { position: relative; }
+  .header { position: sticky !important; top: 0; }
   .header-inner { width: calc(100% - 24px) !important; max-width: 100% !important; flex-wrap: wrap; gap: 8px !important; }
   .search-bar-container { flex: 1 1 100% !important; width: 100% !important; max-width: none !important; order: 3; }
   .products-grid, .related-grid, .category-grid, .category-list-grid,
@@ -143,6 +143,8 @@ a {
 .quick-view-cart { border: 1px solid #b98a9a; background: white; color: var(--brand-wine); }
 .quick-view-order { border: 1px solid var(--brand-wine); background: linear-gradient(135deg,var(--brand-wine),var(--brand-wine-deep)); color: #fff; }
 .quick-view-notice { color: #16865f; font-size: 13px; font-weight: 800; }
+.quick-view-selection-hint { margin: 8px 0 0; color: #806d74; font-size: 12px; line-height: 1.55; }
+.quick-view-actions button:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; transform: none; }
 .quick-view-full-details { display: inline-block; margin-top: 14px; color: var(--brand-wine); font-size: 12px; font-weight: 800; text-underline-offset: 4px; }
 @keyframes qvFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes qvRise { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }

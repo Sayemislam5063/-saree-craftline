@@ -847,7 +847,6 @@ export default function ProductDetailsPage() {
                   <Link href={`/products/${rp.id}`} key={rp.id} className="related-card">
                     <div className="related-img-box">
                       {img ? <img src={img} alt={rp.name} /> : <div className="no-img">👗</div>}
-                      {rp.is_free_delivery && <span className="related-free-badge">Free Delivery</span>}
                     </div>
                     <div className="related-info">
                       <h3>{rp.name}</h3>
@@ -1111,15 +1110,16 @@ export default function ProductDetailsPage() {
           flex-direction: column;
           text-decoration: none;
           background: #ffffff;
-          border-radius: 16px;
+          border-radius: 18px;
           overflow: hidden;
           border: 1px solid #e5dfe1;
-          transition: all 0.3s ease;
+          box-shadow: 0 7px 22px rgba(63,13,32,.055);
+          transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
         }
 
         .related-card:hover {
           transform: translateY(-5px);
-          box-shadow: 0 12px 28px rgba(125, 51, 85, 0.12);
+          box-shadow: 0 14px 30px rgba(63,13,32,.12);
           border-color: #3f0d20;
         }
 
@@ -1151,29 +1151,21 @@ export default function ProductDetailsPage() {
           color: #a98290;
         }
 
-        .related-free-badge {
-          position: absolute;
-          top: 10px;
-          left: 10px;
-          background: #1f6b42;
-          color: #fff;
-          font-size: 9px;
-          font-weight: 800;
-          padding: 3px 8px;
-          border-radius: 6px;
-          box-shadow: 0 4px 10px rgba(31, 107, 66, 0.3);
-        }
-
         .related-info {
-          padding: 15px;
-          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 5px;
+          padding: 14px 15px 16px;
+          text-align: left;
         }
 
         .related-info h3 {
-          margin: 0 0 8px;
+          width: 100%;
+          margin: 0;
           font-size: 14px;
           font-weight: 800;
-          color: #392f35;
+          color: #281c21;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -1183,7 +1175,7 @@ export default function ProductDetailsPage() {
           margin: 0;
           font-size: 16px;
           font-weight: 900;
-          color: #3f0d20;
+          color: #541126;
         }
 
         .lightbox { position: fixed; inset: 0; z-index: 9999; background: rgba(20, 12, 18, 0.88); display: flex; align-items: center; justify-content: center; padding: 30px; cursor: zoom-out; animation: lightboxIn 0.25s ease-out; }

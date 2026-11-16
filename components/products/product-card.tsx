@@ -24,7 +24,7 @@ export default function ProductCard({
 
   const [isFavorite, setIsFavorite] = useState(false);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
-  const [quickViewOption, setQuickViewOption] = useState<"withoutBlouse" | "withBlouse">("withoutBlouse");
+  const [quickViewOption, setQuickViewOption] = useState<"withoutBlouse" | "withBlouse" | null>(null);
   const [quickViewQuantity, setQuickViewQuantity] = useState(1);
   const [quickViewNotice, setQuickViewNotice] = useState("");
 
@@ -57,6 +57,8 @@ export default function ProductCard({
   const singlePrice =
     pricing.discountPrice ??
     pricing.withoutBlouse;
+  const quickViewWithoutBlousePrice = pricing.discountWithoutBlouse ?? pricing.withoutBlouse;
+  const quickViewWithBlousePrice = pricing.discountWithBlouse ?? pricing.withBlouse;
 
   /*
     Stock 0 বা তার কম হলে Out of Stock
@@ -236,6 +238,7 @@ export default function ProductCard({
 
     setPoppedButton(button);
     setQuickViewNotice("");
+    setQuickViewOption(null);
     setQuickViewQuantity(1);
     setQuickViewOpen(true);
     window.setTimeout(() => setPoppedButton(null), 400);
@@ -243,8 +246,12 @@ export default function ProductCard({
 
   function completeQuickView(action: "cart" | "order") {
     if (outOfStock) return;
+    if (!isSinglePrice && !quickViewOption) {
+      setQuickViewNotice("আগে শাড়ির অপশন বেছে নিন");
+      return;
+    }
     const quantity = Math.max(1, Math.min(Number(quickViewQuantity) || 1, Number(product.stock) || 1));
-    addToCart(product, quickViewOption, quantity);
+    addToCart(product, quickViewOption ?? "withoutBlouse", quantity);
     if (action === "order") {
       router.push("/checkout");
       return;
@@ -551,11 +558,18 @@ export default function ProductCard({
             <div className="quick-view-content">
               {product.categoryName && <span className="quick-view-eyebrow">{product.categoryName}</span>}
               <h2>{product.name}</h2>
-              <p className="quick-view-price">৳ {(isSinglePrice ? singlePrice : quickViewOption === "withBlouse" ? (pricing.discountWithBlouse ?? pricing.withBlouse) : (pricing.discountWithoutBlouse ?? pricing.withoutBlouse)).toLocaleString("bn-BD")}</p>
+              <p className="quick-view-price">
+                {isSinglePrice
+                  ? `৳ ${Number(singlePrice).toLocaleString("bn-BD")}`
+                  : quickViewOption === null
+                    ? `৳ ${Number(quickViewWithoutBlousePrice).toLocaleString("bn-BD")} – ${Number(quickViewWithBlousePrice).toLocaleString("bn-BD")}`
+                    : `৳ ${Number(quickViewOption === "withBlouse" ? quickViewWithBlousePrice : quickViewWithoutBlousePrice).toLocaleString("bn-BD")}`}
+              </p>
               {product.description && <p className="quick-view-description">{String(product.description).slice(0, 180)}</p>}
-              {!isSinglePrice && <fieldset className="quick-view-options"><legend>শাড়ির অপশন</legend><button type="button" className={quickViewOption === "withoutBlouse" ? "selected" : ""} onClick={() => setQuickViewOption("withoutBlouse")}>ব্লাউজ ছাড়া</button><button type="button" className={quickViewOption === "withBlouse" ? "selected" : ""} onClick={() => setQuickViewOption("withBlouse")}>ব্লাউজসহ</button></fieldset>}
+              {!isSinglePrice && <fieldset className="quick-view-options"><legend>শাড়ির অপশন</legend><button type="button" className={quickViewOption === "withoutBlouse" ? "selected" : ""} aria-pressed={quickViewOption === "withoutBlouse"} onClick={() => { setQuickViewOption("withoutBlouse"); setQuickViewNotice(""); }}>ব্লাউজ ছাড়া</button><button type="button" className={quickViewOption === "withBlouse" ? "selected" : ""} aria-pressed={quickViewOption === "withBlouse"} onClick={() => { setQuickViewOption("withBlouse"); setQuickViewNotice(""); }}>ব্লাউজসহ</button></fieldset>}
+              {!isSinglePrice && !quickViewOption && <p className="quick-view-selection-hint">কার্টে যোগ বা অর্ডার করার আগে একটি অপশন বেছে নিন।</p>}
               <div className="quick-view-quantity"><span>পরিমাণ</span><button type="button" onClick={() => setQuickViewQuantity((q) => Math.max(1, q - 1))} aria-label="Decrease quantity">−</button><strong>{quickViewQuantity}</strong><button type="button" onClick={() => setQuickViewQuantity((q) => Math.min(Number(product.stock) || 1, q + 1))} aria-label="Increase quantity">+</button><small>স্টক {product.stock}</small></div>
-              <div className="quick-view-actions"><button type="button" className="quick-view-cart" onClick={() => completeQuickView("cart")}>কার্টে যোগ করুন</button><button type="button" className="quick-view-order" onClick={() => completeQuickView("order")}>এখনই অর্ডার</button></div>
+              <div className="quick-view-actions"><button type="button" className="quick-view-cart" disabled={!isSinglePrice && !quickViewOption} onClick={() => completeQuickView("cart")}>কার্টে যোগ করুন</button><button type="button" className="quick-view-order" disabled={!isSinglePrice && !quickViewOption} onClick={() => completeQuickView("order")}>এখনই অর্ডার</button></div>
               {quickViewNotice && <p className="quick-view-notice" role="status">✓ {quickViewNotice}</p>}
               <Link className="quick-view-full-details" href={productDetailsUrl}>সম্পূর্ণ বিস্তারিত দেখুন →</Link>
             </div>

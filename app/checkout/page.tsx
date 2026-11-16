@@ -423,7 +423,11 @@ export default function CheckoutPage() {
         <div className="heading">
           <p className="eyebrow">SAREE CRAFTLINE</p>
           <h1>Checkout</h1>
-          <p>আপনার তথ্য দিন এবং Delivery Option নির্বাচন করে order দিন।</p>
+          <p>সঠিক নাম, সচল মোবাইল নম্বর ও পূর্ণ ঠিকানা দিন—যাতে আপনার শাড়ি নির্ভুলভাবে পৌঁছে দিতে পারি।</p>
+          <div className="checkout-guidance" role="note">
+            <span className="guidance-icon" aria-hidden="true">✓</span>
+            <span><strong>নিশ্চিন্তে অর্ডার করুন</strong> — অর্ডার নিশ্চিত করতে প্রয়োজনে আপনার দেওয়া নম্বরে যোগাযোগ করা হবে। ঠিকানায় বাড়ি/রোড, এলাকা বা গ্রাম, বাজার এবং কাছের পরিচিত স্থান লিখুন।</span>
+          </div>
         </div>
 
         <div className="layout">
@@ -474,7 +478,8 @@ export default function CheckoutPage() {
 
             <div className="field">
               <label htmlFor="address">সম্পূর্ণ ঠিকানা *</label>
-              <textarea id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="বাড়ি, রোড, এলাকা, বাজার ইত্যাদি" rows={5} required disabled={isSubmitting} />
+              <textarea id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="বাড়ি/ফ্ল্যাট, রোড বা গ্রাম, এলাকা/বাজার, কাছের পরিচিত স্থান" rows={5} required disabled={isSubmitting} />
+              <small className="address-hint">উদাহরণ: বাড়ি ১২, কলেজ রোড, দক্ষিণ বাজার, পোস্ট অফিসের পাশে।</small>
             </div>
 
             <div className="delivery-section">
@@ -636,14 +641,18 @@ export default function CheckoutPage() {
           to { opacity: 1; transform: translateY(0); }
         }
         
-        .page { min-height: 75vh; padding: 38px 0 70px; background: radial-gradient(circle at top left, rgba(84, 17, 38, 0.55), transparent 30%), #fff; font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+        .page { min-height: 100vh; padding: 38px 0 70px; background: linear-gradient(180deg,#fff 0%,#faf9f9 100%); font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
         .container { width: min(1180px, calc(100% - 24px)); margin: 0 auto; }
-        .heading { margin-bottom: 25px; }
+        .heading { max-width: 780px; margin: 0 auto 25px; }
         .eyebrow { margin: 0 0 6px; color: #64172f; font-size: 11px; font-weight: 800; letter-spacing: 1px; }
         .heading h1 { margin: 0; font-size: 36px; }
-        .heading > p:last-child { margin: 8px 0 0; color: #88757d; font-size: 13px; }
+        .heading > p:not(.eyebrow) { margin: 8px 0 0; color: #75656b; font-size: 14px; line-height: 1.7; }
+        .checkout-guidance { display: flex; align-items: flex-start; gap: 11px; margin-top: 18px; padding: 14px 16px; border: 1px solid #e8dfe2; border-left: 3px solid #64172f; border-radius: 13px; background: #fff; color: #66565c; font-size: 12px; line-height: 1.7; box-shadow: 0 6px 18px rgba(63,13,32,.04); }
+        .checkout-guidance strong { color: #541126; }
+        .guidance-icon { flex: 0 0 23px; width: 23px; height: 23px; display: grid; place-items: center; border-radius: 50%; background: #64172f; color: #fff; font-weight: 900; }
+        .address-hint { color: #78676e !important; font-size: 11px !important; line-height: 1.6; }
         .layout { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 22px; align-items: start; }
-        .form-card, .summary { border: 1px solid rgba(93, 67, 77, 0.1); border-radius: 24px; background: rgba(255, 255, 255, 0.9); box-shadow: 0 16px 35px rgba(83, 53, 66, 0.07); }
+        .form-card, .summary { border: 1px solid #e8e1e3; border-radius: 20px; background: #fff; box-shadow: 0 12px 32px rgba(63,13,32,.055); }
         .form-card { padding: 24px; }
         .form-card h2, .payment h2, .delivery-section h2 { margin: 0 0 18px; font-size: 19px; }
         .field { margin-bottom: 16px; }
@@ -724,7 +733,7 @@ export default function CheckoutPage() {
         .total-row { align-items: center; font-size: 17px; }
         .secure { margin-top: 18px; padding: 10px; border-radius: 11px; background: #f8f7f7; text-align: center; color: #76676e; font-size: 11px; }
         @media (max-width: 850px) { .layout { grid-template-columns: 1fr; } .summary { position: static; } }
-        @media (max-width: 600px) { .page { padding-top: 25px; } .heading h1 { font-size: 30px; } .form-card, .summary { border-radius: 20px; } .form-card { padding: 17px; } .summary { padding: 17px; } .address-grid { grid-template-columns: 1fr; } .customer-preview p { align-items: flex-start; flex-direction: column; gap: 2px; } .customer-preview p strong { text-align: left; } .delivery-charge { font-size: 18px; } .delivery-charge.free { font-size: 20px; } }
+        @media (max-width: 600px) { .page { padding: 24px 0 38px; } .heading { margin-bottom: 18px; } .heading h1 { font-size: 30px; } .heading > p:not(.eyebrow) { font-size: 13px; } .checkout-guidance { padding: 12px; font-size: 11.5px; } .form-card, .summary { border-radius: 17px; } .form-card { padding: 17px; } .summary { padding: 17px; } .address-grid { grid-template-columns: 1fr; } .customer-preview p { align-items: flex-start; flex-direction: column; gap: 2px; } .customer-preview p strong { text-align: left; } .delivery-charge { font-size: 18px; } .delivery-charge.free { font-size: 20px; } }
       `}</style>
     </main>
   );

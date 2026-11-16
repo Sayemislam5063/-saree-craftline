@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "../cart/cart-provider";
@@ -27,6 +27,8 @@ const iconBoxStyle: React.CSSProperties = {
 export default function Header() {
   const { totalProducts } = useCart();
   const [cartOpen, setCartOpen] = useState(false);
+  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
+  const lastScrollY = useRef(0);
   const router = useRouter();
 
   // ✨ সার্চ এবং ক্যাটাগরি স্টেট
@@ -36,6 +38,19 @@ export default function Header() {
 
   // ✨ হোভার অ্যানিমেশনের জন্য স্টেট (Link-এ কাজ করার জন্য)
   const [hovered, setHovered] = useState<null | "track" | "fav" | "cart" | "logo" | "search">(null);
+
+  useEffect(() => {
+    lastScrollY.current = window.scrollY;
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY <= 24) setIsHeaderHidden(false);
+      else if (currentY > lastScrollY.current + 4) setIsHeaderHidden(true);
+      else if (currentY < lastScrollY.current - 4) setIsHeaderHidden(false);
+      lastScrollY.current = currentY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     // ক্যাটাগরিগুলো লোড করা হচ্ছে
@@ -61,7 +76,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="header">
+      <header className={`header ${isHeaderHidden ? "is-hidden" : ""}`}>
         <div className="container header-inner">
 
           {/* ============ LOGO (এখন হোভার অ্যানিমেশনসহ) ============ */}
@@ -249,7 +264,8 @@ export default function Header() {
       />
 
       <style jsx>{`
-        .header { position: sticky; top: 0; z-index: 50; width: 100%; background: rgba(255, 255, 255, 0.94); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid rgba(93, 67, 77, 0.08); box-shadow: 0 4px 20px rgba(83, 53, 66, 0.04); }
+        .header { position: sticky; top: 0; z-index: 50; width: 100%; background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid rgba(93, 67, 77, 0.08); box-shadow: 0 4px 20px rgba(83, 53, 66, 0.04); transform: translateY(0); opacity: 1; transition: transform .24s ease, opacity .2s ease; }
+        .header.is-hidden { transform: translateY(-105%); opacity: 0; pointer-events: none; }
         .container { width: min(1240px, calc(100% - 32px)); margin: 0 auto; }
         .header-inner { min-height: 84px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 
