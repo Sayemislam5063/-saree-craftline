@@ -1084,8 +1084,11 @@ export default function ProductCard({
         }
 
         @media (max-width: 600px) {
+          .product-card { border-radius: 15px; box-shadow: 0 5px 18px rgba(63,13,32,.07); }
+          .product-image-wrap { aspect-ratio: 1.16 / 1; }
           .product-name {
-            font-size: 14px;
+            font-size: 13px;
+            line-height: 1.35;
           }
 
           .price {
@@ -1093,9 +1096,14 @@ export default function ProductCard({
           }
 
           .product-info {
-            padding:
-              12px 12px 14px;
+            padding: 9px 10px 11px;
           }
+
+          .product-category { margin-bottom: 3px; font-size: 10px; }
+          .price-wrap { min-height: 25px; margin-top: 6px; }
+          .action-buttons { gap: 6px; margin-top: 9px; }
+          .cart-button, .order-button, .out-of-stock-button { min-height: 37px; border-radius: 10px; font-size: 11px; }
+          .wishlist-btn { top: 9px; right: 9px; width: 31px; height: 31px; border-radius: 50%; }
 
           .review-pill-link {
             padding:

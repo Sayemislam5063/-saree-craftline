@@ -44,11 +44,11 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
           height: 60px;
           display: grid;
           place-items: center;
-          border: 1px solid #efcbd7;
+          border: 1px solid rgba(255,255,255,.7);
           border-radius: 50%;
-          background: radial-gradient(circle at 31% 24%, #fff 0%, #fff5f8 23%, #f5dce5 64%, #eec8d5 100%);
-          box-shadow: inset -5px -7px 13px rgba(125, 39, 70, .09), 0 8px 23px rgba(84, 17, 38, .18);
-          animation: pingPongBounce 2.2s cubic-bezier(.38,.05,.62,.95) infinite;
+          background: radial-gradient(circle at 32% 24%, #68ed9b 0%, #25d366 58%, #16b957 100%);
+          box-shadow: 0 5px 16px rgba(37, 211, 102, .22);
+          animation: whatsappGlow 4.2s ease-in-out infinite;
           transition: box-shadow .2s ease, filter .2s ease;
           -webkit-tap-highlight-color: transparent;
         }
@@ -63,9 +63,9 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
           background: rgba(255,255,255,.82);
           transform: rotate(-35deg);
         }
-        .whatsapp-ball svg { position: relative; width: 30px; height: 30px; fill: #64172f; filter: drop-shadow(0 1px 1px rgba(84,17,38,.1)); }
-        .whatsapp-ball:hover { filter: saturate(1.08); box-shadow: inset -5px -7px 13px rgba(125,39,70,.08), 0 12px 27px rgba(84,17,38,.24); }
-        @keyframes pingPongBounce { 0%, 100% { transform: translateY(0) rotate(0); } 12% { transform: translateY(-13px) rotate(-7deg); } 23% { transform: translateY(0) rotate(6deg); } 31% { transform: translateY(-5px) rotate(-3deg); } 39% { transform: translateY(0) rotate(0); } 72% { transform: translateY(0) rotate(0); } 79% { transform: translateY(-8px) rotate(5deg); } 87% { transform: translateY(0) rotate(-4deg); } 93% { transform: translateY(-3px) rotate(2deg); } }
+        .whatsapp-ball svg { position: relative; width: 30px; height: 30px; fill: #fff; filter: drop-shadow(0 1px 1px rgba(0,0,0,.1)); }
+        .whatsapp-ball:hover { filter: saturate(1.08); box-shadow: 0 8px 22px rgba(37,211,102,.32); }
+        @keyframes whatsappGlow { 0%, 68%, 100% { box-shadow: 0 5px 16px rgba(37,211,102,.22); } 78% { box-shadow: 0 7px 24px rgba(37,211,102,.42), 0 0 0 7px rgba(37,211,102,.1); } 88% { box-shadow: 0 5px 16px rgba(37,211,102,.22); } }
         @media (max-width: 600px) { .whatsapp-ball { right: 16px; bottom: 18px; width: 54px; height: 54px; } .whatsapp-ball svg { width: 27px; height: 27px; } }
         @media (prefers-reduced-motion: reduce) { .whatsapp-ball { animation: none; } }
       `}</style>

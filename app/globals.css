@@ -71,7 +71,7 @@ a {
   .order-preview, .gallery-layout { grid-template-columns: minmax(0, 1fr) !important; }
   .hero { padding: 24px 18px !important; border-radius: 18px !important; }
   .section, .products-section, .related-section { padding-left: 0; padding-right: 0; }
-  .product-card { gap: 18px !important; padding: 14px !important; }
+  .product-card { gap: 0 !important; padding: 0 !important; }
   .gallery-column, .gallery, .main-image { width: 100%; min-width: 0; }
   .option-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .form-card, .summary, .information-card, .policy-content { width: 100%; min-width: 0; }
@@ -92,7 +92,7 @@ a {
   .hero { padding: 20px 14px !important; }
   .products-grid, .related-grid, .category-grid, .category-list-grid,
   .product-grid, .image-preview-grid { gap: 9px !important; }
-  .product-card { padding: 11px !important; border-radius: 14px !important; }
+  .product-card { padding: 0 !important; border-radius: 14px !important; }
   .product-card h3, .product-card h4 { overflow-wrap: anywhere; }
   .option-grid { grid-template-columns: 1fr !important; }
   .footer-grid { grid-template-columns: 1fr !important; }
