@@ -84,7 +84,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         {/* মেইন কন্টেন্ট এরিয়া */}
         <div className="layout-main-wrapper">
-          {/* মোবাইলের জন্য গ্লোবাল হ্যামবার্গার বাটন (এটি সব পেজের ওপরে অটোমেটিক আসবে) */}
           <div className="layout-mobile-header">
             <button
               className="layout-hamburger"
@@ -101,18 +100,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <main className="layout-main-content">
             {/* 
               ✨ ম্যাজিক সিএসএস ✨
-              এই সিএসএস আপনার অন্যান্য পেজের (Dashboard, Products) পুরনো সাইডবার 
+              এটি আপনার অন্যান্য পেজের (Dashboard, Products) পুরনো সাইডবার 
               এবং এক্সট্রা গ্যাপগুলোকে অটোমেটিক লুকিয়ে ফেলবে। 
-              আপনাকে আর কোনো পেজ থেকে কোড ডিলিট করতে হবে না!
             */}
-            <style jsx global>{`
-              /* ১. চাইল্ড পেজের সব পুরনো সাইডবার এবং বাটন হাইড করে দেবে */
+            <style>{`
               .layout-main-content aside.sidebar,
               .layout-main-content .hamburger {
                 display: none !important;
               }
 
-              /* ২. চাইল্ড পেজের মেইন র‍্যাপার (admin-page / admin-shell) এর মার্জিন ও প্যাডিং রিসেট করবে */
               .layout-main-content > .admin-page,
               .layout-main-content > .admin-shell {
                 background: transparent !important;
@@ -123,7 +119,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 width: 100% !important;
               }
 
-              /* ৩. পুরনো পেজের main-content বা content এর বাম দিকের ফাঁকা জায়গা (margin) রিসেট করবে */
               .layout-main-content .admin-page > .main-content,
               .layout-main-content .admin-page > .content,
               .layout-main-content .admin-shell > .main-content {
@@ -140,7 +135,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       </div>
 
       {/* গ্লোবাল ডিজাইন সিএসএস */}
-      <style jsx global>{`
+      <style>{`
         * { box-sizing: border-box; }
         :root {
           --accent: #64172f;
@@ -188,16 +183,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         .layout-view-store { height: 46px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #e2d7dd; text-decoration: none; font-size: 12px; font-weight: 700; transition: all 0.22s ease; }
         .layout-view-store:hover { background: rgba(255, 255, 255, 0.08); transform: translateY(-1px); }
 
-        /* ওভারলে */
         .layout-overlay { display: none; position: fixed; inset: 0; background: rgba(20, 8, 15, 0.55); backdrop-filter: blur(3px); z-index: 40; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
         .layout-overlay.show { opacity: 1; pointer-events: auto; }
 
-        /* মেইন কন্টেন্ট */
         .layout-main-wrapper { flex: 1; margin-left: 250px; width: calc(100% - 250px); min-width: 0; display: flex; flex-direction: column; }
         .layout-main-content { padding: 28px 30px 60px; width: 100%; animation: fadeUp 0.5s ease both; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* মোবাইল হেডার */
         .layout-mobile-header {
           display: none; align-items: center; gap: 12px; padding: 12px 16px;
           background: #ffffff; border-bottom: 1px solid var(--border);
@@ -211,7 +203,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         .layout-hamburger span { display: block; height: 2px; border-radius: 2px; background: var(--accent); }
         .layout-mobile-title { font-size: 14px; font-weight: 800; color: var(--text); }
 
-        /* রেসপন্সিভ (মোবাইল ভিউ) */
         @media (max-width: 900px) {
           .layout-sidebar { transform: translateX(-100%); box-shadow: none; }
           .layout-sidebar.open { transform: translateX(0); box-shadow: 20px 0 60px rgba(20, 8, 15, 0.4); }
